@@ -142,10 +142,6 @@ script:
 # Packages
 # ============================================
 packages:
-  # Language / Localization (en = English, da = Danish)
-  language: !include floor-heating/i18n/da.yaml
-  # language: !include floor-heating/i18n/en.yaml
-
   # Board
   board: !include floor-heating/boards/esp32.yaml
   # board: !include floor-heating/boards/esp32-s3.yaml

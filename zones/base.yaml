@@ -39,7 +39,7 @@ globals:
 # ============================================
 number:
   - platform: template
-    name: "${friendly_name} ${str_area}"
+    name: "${friendly_name} Area"
     id: ${id_prefix}zone_${zone_number}_area
     icon: "mdi:floor-plan"
     unit_of_measurement: "m²"
@@ -53,7 +53,7 @@ number:
       sorting_group_id: sorting_group_zones
     
   - platform: template
-    name: "${friendly_name} ${str_max_opening}"
+    name: "${friendly_name} Max Opening"
     id: ${id_prefix}zone_${zone_number}_max_opening
     icon: "mdi:valve-open"
     unit_of_measurement: "%"
@@ -67,7 +67,7 @@ number:
       sorting_group_id: sorting_group_zones
 
   - platform: template
-    name: "${str_bemf_trigger} ${zone_number}"
+    name: "BEMF Trigger ${zone_number}"
     id: bemf_trigger_${zone_number}
     optimistic: true
     min_value: 0.005
@@ -83,7 +83,7 @@ number:
 # ============================================
 cover:
   - platform: endstop
-    name: "${str_channel}${zone_number}"
+    name: "CH${zone_number}"
     device_class: shutter
     id: CH${zone_number}_cover
     open_action:
@@ -108,7 +108,7 @@ cover:
 # ============================================
 switch: 
   - platform: gpio
-    name: "${str_channel}${zone_number} IA"
+    name: "CH${zone_number} IA"
     id: CH${zone_number}_IA_pin
     pin:
       sn74hc595: sn74hc595_hub
@@ -121,7 +121,7 @@ switch:
     restore_mode: always off
     
   - platform: gpio
-    name: "${str_channel}${zone_number} IB"
+    name: "CH${zone_number} IB"
     id: CH${zone_number}_IB_pin
     pin:
       sn74hc595: sn74hc595_hub
@@ -134,7 +134,7 @@ switch:
     restore_mode: always off
     
   - platform: template
-    name: "${str_run_check} ${friendly_name}"
+    name: "Run ${friendly_name} Check"
     turn_on_action:
       - script.execute: TH${zone_number}_check
     web_server:
@@ -146,7 +146,7 @@ switch:
 binary_sensor:
   - platform: template
     id: BEMF_${zone_number}_sensor
-    name: "BEMF ${str_channel}${zone_number}"
+    name: "BEMF CH${zone_number}"
     internal: true
     lambda: return ((id(${bemf_sensor_adc}).state >= id(bemf_trigger_${zone_number}).state));
     on_press:
@@ -173,7 +173,7 @@ binary_sensor:
 # ============================================
 sensor:
   - platform: template
-    name: "${friendly_name} ${str_pipe_length}"
+    name: "${friendly_name} Pipe Length"
     id: ${id_prefix}zone_${zone_number}_pipe_length
     icon: "mdi:ruler"
     unit_of_measurement: "m"
