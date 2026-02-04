@@ -13,10 +13,14 @@ external_components:
 ############## General configuration
 
 substitutions:
-  name: floor-heating-controller #no special caracters
+  name: floor-heating-controller #no special characters
   friendly_name: "Floor heating"
-  id_prefix: "heating_controller_" #if you have more than one board, it could be usefull to remane all the "id:heating_controller_xxxx" with a decicaded prefix [not done in sensor_adc.yaml actually]
-  revision: "1.123"
+  id_prefix: "heating_controller_" #if you have more than one board, it could be useful to rename all the "id:heating_controller_xxxx" with a dedicated prefix
+  revision: "2.0.0"
+  
+  # Multi-controller configuration
+  controller_id: "1"  # Change to "2" for second controller
+  total_controllers: "2"  # Total number of controllers in the system
     
   #time
   TZ: "Europe/Zurich" #timezone
@@ -27,10 +31,22 @@ substitutions:
   # valve_maintenance_interval: "7days"
   onboot_valve_calibration_delay: "1min"
   
+  # Supply and manifold return temperature sensors
   dallasaddress_input: "0xb300000084aa6128"
   dallasaddress_output: "0xeb0000008492ad28"
   
-  adc_zero_calibration: "-0.075" #typical : -0.075 for esp32 devkit, 0.005 for esp32-c3. + motor eventual specific inpedance
+  # Per-zone return temperature sensors (run 1-wire scan to get addresses)
+  # Set to "0x0000000000000000" to disable a zone's return sensor
+  dallasaddress_zone_1_return: "0x0000000000000000"
+  dallasaddress_zone_2_return: "0x0000000000000000"
+  dallasaddress_zone_3_return: "0x0000000000000000"
+  dallasaddress_zone_4_return: "0x0000000000000000"
+  dallasaddress_zone_5_return: "0x0000000000000000"
+  dallasaddress_zone_6_return: "0x0000000000000000"
+  dallasaddress_zone_7_return: "0x0000000000000000"
+  dallasaddress_zone_8_return: "0x0000000000000000"
+  
+  adc_zero_calibration: "-0.075" #typical : -0.075 for esp32 devkit, 0.005 for esp32-c3. + motor eventual specific impedance
   pump_mac_address: "AA:BB:CC:DD:EE:FF"
   
 web_server:
@@ -474,8 +490,12 @@ packages:
 
 
   
+  # Board configuration (uncomment the one you're using)
   board: !include board_esp32.yaml
   # board: !include board_esp32-C3.yaml
+  # board: !include board_esp32-S3.yaml
+  
+  # Core includes
   logger: !include logger.yaml
   sn74hc595: !include sn74hc595.yaml
   wifi: !include wifi.yaml
@@ -486,5 +506,14 @@ packages:
   sensor_adc: !include sensor_adc.yaml
   sensor_temperature: !include sensor_temperature.yaml
   sensor_others: !include sensor_others.yaml
-  onwire: !include onewire.yaml #only for boards >= rev 61
+  onewire: !include onewire.yaml #only for boards >= rev 61
+  
+  # Hydraulic balancing system (new)
+  zone_parameters: !include zone_parameters.yaml
+  sensor_return_temperature: !include sensor_return_temperature.yaml
+  hydraulic_balancing: !include hydraulic_balancing.yaml
+  standalone_control: !include standalone_control.yaml
+  
+  # MQTT integration for Ecodan heat pump (optional - comment out if not using MQTT)
+  # mqtt_ecodan: !include mqtt_ecodan_integration.yaml
 

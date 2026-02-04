@@ -116,6 +116,8 @@ script:
                         id(${id_prefix}position_logs).publish_state("CH${channel_number} is OFF and at 0 position");
                         ESP_LOGD("heat_ctrl_pos", "CH${channel_number} is OFF and at 0 position");
                     }
+                    // Update zone state to indicate OFF
+                    id(${id_prefix}zone_${channel_number}_state) = 0;  // Treat as overheated (closed)
                     return;
                 }
                 if (id(${id}_thermostat).preset == CLIMATE_PRESET_SLEEP ) {
@@ -125,50 +127,125 @@ script:
                 }
                 id(${id_prefix}main_logs).publish_state("TH${channel_number}_check triggered");
                 ESP_LOGD("heat_ctrl_main", "TH${channel_number}_check triggered");
+                
                 // check if any others actuator is running. If yes, stop action and return. 
                 if (id(CH${bemf_linked_with_channel}_cover).current_operation != COVER_OPERATION_IDLE) {
                        id(${id_prefix}main_logs).publish_state("CH${bemf_linked_with_channel} running cause CH${channel_number} cancel operation");
                        ESP_LOGD("heat_ctrl_main", "CH${bemf_linked_with_channel} running cause CH${channel_number} cancel operation");
                        return;
                 } 
-                // get info from climate
+                
+                // Get info from climate
                 float current_temp = id(${id}_thermostat).current_temperature;
                 float target_temp = id(${id}_thermostat).target_temperature_low;
-                //float target_temp_low = id(${id}_thermostat).target_temperature_low_low;
-                //float target_temp_high = id(${id}_thermostat).target_temperature_high ;
-                //float diff_temp = (target_temp_high + target_temp_low)/2 - current_temp;
                 float diff_temp = target_temp - current_temp;
                 
-                // get info from cover
-                //float current_position = id(CH${channel_number}_cover).position;
+                // Get hydraulic balancing parameters
+                float comfort_band = id(${id_prefix}comfort_band).state;
+                float min_opening = id(${id_prefix}minimum_valve_opening).state / 100.0;
+                float maintenance_base = id(${id_prefix}maintenance_base).state / 100.0;
+                float demand_boost_pct = id(${id_prefix}demand_boost).state / 100.0;
+                bool balancing_enabled = id(${id_prefix}balancing_enabled).state;
                 
-                // Non-linear mapping parameters for heating scenario
-                float A_heating = 1.0;  // Scaling factor for heating scenario (1= max)
-                float B_heating = ${tanh_steepness};    // Steepness parameter for heating scenario
-                float C_heating = 0.0;    // Shift parameter for heating scenario
-                  
-                // Calculate valve position using non-linear mapping function
-                float target_position = A_heating * tanh(B_heating * diff_temp + C_heating);
-                                               
-                // Clip normalized valve position to ensure it's within [0, 1]
-                //target_position = fmax(0.0, fmin(1.0, target_position));
+                // ============================================
+                // Zone State Classification with Hysteresis
+                // ============================================
+                // States: 0=OVERHEATED, 1=SATISFIED, 2=DEMAND
+                int prev_state = id(${id_prefix}zone_${channel_number}_state);
+                bool was_overheated = id(${id_prefix}zone_${channel_number}_was_overheated);
+                int new_state;
                 
-                target_position = target_position * (id(${id_prefix}boost_factor).state)/100;
+                if (diff_temp < -comfort_band) {
+                    // Temperature > setpoint + comfort_band -> OVERHEATED
+                    new_state = 0;
+                    id(${id_prefix}zone_${channel_number}_was_overheated) = true;
+                } else if (was_overheated && diff_temp < 0) {
+                    // Hysteresis: stay overheated until temp drops to setpoint
+                    new_state = 0;
+                } else if (diff_temp <= comfort_band) {
+                    // Within comfort band -> SATISFIED (maintenance mode)
+                    new_state = 1;
+                    id(${id_prefix}zone_${channel_number}_was_overheated) = false;
+                } else {
+                    // Temperature < setpoint - comfort_band -> DEMAND
+                    new_state = 2;
+                    id(${id_prefix}zone_${channel_number}_was_overheated) = false;
+                }
+                id(${id_prefix}zone_${channel_number}_state) = new_state;
                 
-                //normalize
-                if (target_position >1) { target_position = 1;} 
-                if (target_position <0) { target_position = 0;} 
+                // ============================================
+                // Calculate Target Position
+                // ============================================
+                float target_position = 0;
                 
-                //call movement if target_position change consequently
+                if (new_state == 0) {
+                    // OVERHEATED - close valve
+                    target_position = 0;
+                    ESP_LOGD("heat_ctrl_pos", "CH${channel_number}: OVERHEATED (%.1f°C > %.1f°C + %.1f°C), closing", 
+                             current_temp, target_temp, comfort_band);
+                }
+                else if (balancing_enabled && id(${id_prefix}zone_${channel_number}_hydraulic_factor) > 0) {
+                    // Use hydraulic balancing factor
+                    float hydraulic_factor = id(${id_prefix}zone_${channel_number}_hydraulic_factor);
+                    
+                    if (new_state == 1) {
+                        // SATISFIED - use hydraulic factor directly (already calculated in balancing script)
+                        target_position = hydraulic_factor;
+                        ESP_LOGD("heat_ctrl_pos", "CH${channel_number}: SATISFIED, hydraulic=%.2f", target_position);
+                    } else {
+                        // DEMAND - use tanh curve with hydraulic adjustment
+                        float B_heating = ${tanh_steepness};
+                        float tanh_position = tanh(B_heating * diff_temp);
+                        if (tanh_position < 0) tanh_position = 0;
+                        
+                        // Apply boost factor and hydraulic factor
+                        target_position = tanh_position * (id(${id_prefix}boost_factor).state / 100.0);
+                        
+                        // Combine with hydraulic factor (use the higher of the two for demand)
+                        if (hydraulic_factor > target_position) {
+                            target_position = hydraulic_factor;
+                        }
+                        
+                        ESP_LOGD("heat_ctrl_pos", "CH${channel_number}: DEMAND diff=%.2f, tanh=%.2f, hydraulic=%.2f, final=%.2f", 
+                                 diff_temp, tanh_position, hydraulic_factor, target_position);
+                    }
+                }
+                else {
+                    // Fallback: Original tanh-based calculation (no balancing)
+                    float A_heating = 1.0;
+                    float B_heating = ${tanh_steepness};
+                    float C_heating = 0.0;
+                    
+                    target_position = A_heating * tanh(B_heating * diff_temp + C_heating);
+                    target_position = target_position * (id(${id_prefix}boost_factor).state) / 100.0;
+                    
+                    ESP_LOGD("heat_ctrl_pos", "CH${channel_number}: Fallback tanh, diff=%.2f, pos=%.2f", diff_temp, target_position);
+                }
+                
+                // Apply minimum opening (except for overheated)
+                if (new_state != 0 && target_position < min_opening) {
+                    target_position = min_opening;
+                    ESP_LOGD("heat_ctrl_pos", "CH${channel_number}: Applied min_opening=%.2f", min_opening);
+                }
+                
+                // Normalize to [0, 1]
+                if (target_position > 1) target_position = 1;
+                if (target_position < 0) target_position = 0;
+                
+                // ============================================
+                // Apply Position Change
+                // ============================================
                 if (abs(id(CH${channel_number}_cover).position - target_position) > id(${id_prefix}min_movement).state/100) {
                     auto call = id(CH${channel_number}_cover).make_call();
                     call.set_position(target_position);
                     call.perform();
-                    id(${id_prefix}position_logs).publish_state("Adjustment done for CH${channel_number} set to position " + to_string(target_position * 100) + "% (boost=" + to_string(id(${id_prefix}boost_factor).state) + "%)");
-                    ESP_LOGD("heat_ctrl_pos", "Adjustment done for CH${channel_number} set to position %.2f%% (boost=%.2f%%)", target_position, id(${id_prefix}boost_factor).state);
+                    
+                    const char* state_str = (new_state == 0) ? "OVERHEATED" : (new_state == 1) ? "SATISFIED" : "DEMAND";
+                    id(${id_prefix}position_logs).publish_state("CH${channel_number} [" + std::string(state_str) + "] set to " + to_string(target_position * 100) + "%");
+                    ESP_LOGD("heat_ctrl_pos", "CH${channel_number} [%s] set to %.1f%%", state_str, target_position * 100);
                 } else {
-                    id(${id_prefix}position_logs).publish_state("No adjustment done for CH${channel_number} to target position " + to_string(target_position * 100) + "% cause min movement (" + to_string(id(${id_prefix}min_movement).state) + "%) is not reached");
-                    ESP_LOGD("heat_ctrl_pos", "No adjustment done for CH${channel_number} to target position %.2f%% cause min movement (%.2f%%) is not reached", target_position, id(${id_prefix}min_movement).state);
+                    id(${id_prefix}position_logs).publish_state("CH${channel_number} no change needed (target " + to_string(target_position * 100) + "%)");
+                    ESP_LOGD("heat_ctrl_pos", "CH${channel_number} no change needed, target=%.1f%%", target_position * 100);
                 }
 
 ### back electromotive force (back EMF)

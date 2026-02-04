@@ -1,0 +1,441 @@
+# ============================================
+# Zone Physical Parameters
+# ============================================
+# Optional configuration for each zone's physical properties
+# Used to improve hydraulic balancing calculations
+#
+# Auto-calculated values:
+#   pipe_length = zone_area / (pipe_spacing / 1000)
+#   pipe_volume = pipe_length * volume_per_meter
+#
+# All parameters stored in flash and configurable via web UI
+
+# ============================================
+# Pipe Type Volume Constants (L/m)
+# ============================================
+# PEX 12x2: 0.050 L/m (inner dia 8mm)
+# PEX 14x2: 0.079 L/m (inner dia 10mm)
+# PEX 16x2: 0.113 L/m (inner dia 12mm) - most common
+# PEX 17x2: 0.133 L/m (inner dia 13mm)
+# PEX 18x2: 0.154 L/m (inner dia 14mm)
+# PEX 20x2: 0.201 L/m (inner dia 16mm)
+
+# ============================================
+# Zone 1 Parameters
+# ============================================
+number:
+  - platform: template
+    name: "Zone 1 Area"
+    id: ${id_prefix}zone_1_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 1 Max Opening"
+    id: ${id_prefix}zone_1_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 2 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 2 Area"
+    id: ${id_prefix}zone_2_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 2 Max Opening"
+    id: ${id_prefix}zone_2_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 3 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 3 Area"
+    id: ${id_prefix}zone_3_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 3 Max Opening"
+    id: ${id_prefix}zone_3_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 4 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 4 Area"
+    id: ${id_prefix}zone_4_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 4 Max Opening"
+    id: ${id_prefix}zone_4_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 5 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 5 Area"
+    id: ${id_prefix}zone_5_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 5 Max Opening"
+    id: ${id_prefix}zone_5_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 6 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 6 Area"
+    id: ${id_prefix}zone_6_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 6 Max Opening"
+    id: ${id_prefix}zone_6_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 7 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 7 Area"
+    id: ${id_prefix}zone_7_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 7 Max Opening"
+    id: ${id_prefix}zone_7_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Zone 8 Parameters
+# ============================================
+  - platform: template
+    name: "Zone 8 Area"
+    id: ${id_prefix}zone_8_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: 15
+    
+  - platform: template
+    name: "Zone 8 Max Opening"
+    id: ${id_prefix}zone_8_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: 90
+
+# ============================================
+# Global Pipe Settings
+# ============================================
+  - platform: template
+    name: "Pipe Spacing"
+    id: ${id_prefix}pipe_spacing
+    icon: "mdi:arrow-expand-horizontal"
+    unit_of_measurement: "mm"
+    optimistic: true
+    min_value: 100
+    max_value: 300
+    step: 50
+    restore_value: true
+    initial_value: 150
+    
+  - platform: template
+    name: "Pipe Volume per Meter"
+    id: ${id_prefix}pipe_volume_per_meter
+    icon: "mdi:pipe"
+    unit_of_measurement: "L/m"
+    optimistic: true
+    min_value: 0.05
+    max_value: 0.25
+    step: 0.001
+    restore_value: true
+    initial_value: 0.113  # PEX 16x2
+
+select:
+  - platform: template
+    name: "Pipe Type"
+    id: ${id_prefix}pipe_type
+    icon: "mdi:pipe"
+    optimistic: true
+    restore_value: true
+    options:
+      - "PEX 12x2"
+      - "PEX 14x2"
+      - "PEX 16x2"
+      - "PEX 17x2"
+      - "PEX 18x2"
+      - "PEX 20x2"
+      - "PERT 16x2"
+      - "PERT 20x2"
+    initial_option: "PEX 16x2"
+    on_value:
+      then:
+        - lambda: |-
+            float volume = 0.113;  // default PEX 16x2
+            if (x == "PEX 12x2") volume = 0.050;
+            else if (x == "PEX 14x2") volume = 0.079;
+            else if (x == "PEX 16x2") volume = 0.113;
+            else if (x == "PEX 17x2") volume = 0.133;
+            else if (x == "PEX 18x2") volume = 0.154;
+            else if (x == "PEX 20x2") volume = 0.201;
+            else if (x == "PERT 16x2") volume = 0.113;
+            else if (x == "PERT 20x2") volume = 0.201;
+            
+            auto call = id(${id_prefix}pipe_volume_per_meter).make_call();
+            call.set_value(volume);
+            call.perform();
+            ESP_LOGD("zone_params", "Pipe type changed to %s, volume=%.3f L/m", x.c_str(), volume);
+
+# ============================================
+# Calculated Pipe Lengths (auto-updated)
+# ============================================
+sensor:
+  - platform: template
+    name: "Zone 1 Pipe Length"
+    id: ${id_prefix}zone_1_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_1_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;  // mm to m
+      if (spacing > 0) {
+        return area / spacing;
+      }
+      return 0;
+
+  - platform: template
+    name: "Zone 2 Pipe Length"
+    id: ${id_prefix}zone_2_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_2_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 3 Pipe Length"
+    id: ${id_prefix}zone_3_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_3_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 4 Pipe Length"
+    id: ${id_prefix}zone_4_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_4_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 5 Pipe Length"
+    id: ${id_prefix}zone_5_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_5_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 6 Pipe Length"
+    id: ${id_prefix}zone_6_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_6_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 7 Pipe Length"
+    id: ${id_prefix}zone_7_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_7_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  - platform: template
+    name: "Zone 8 Pipe Length"
+    id: ${id_prefix}zone_8_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_8_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+  # Total pipe length
+  - platform: template
+    name: "Total Pipe Length"
+    id: ${id_prefix}total_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      return id(${id_prefix}zone_1_pipe_length).state +
+             id(${id_prefix}zone_2_pipe_length).state +
+             id(${id_prefix}zone_3_pipe_length).state +
+             id(${id_prefix}zone_4_pipe_length).state +
+             id(${id_prefix}zone_5_pipe_length).state +
+             id(${id_prefix}zone_6_pipe_length).state +
+             id(${id_prefix}zone_7_pipe_length).state +
+             id(${id_prefix}zone_8_pipe_length).state;
+
+  # Total system volume
+  - platform: template
+    name: "Total System Volume"
+    id: ${id_prefix}total_system_volume
+    icon: "mdi:cup-water"
+    unit_of_measurement: "L"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float total_length = id(${id_prefix}total_pipe_length).state;
+      float volume_per_m = id(${id_prefix}pipe_volume_per_meter).state;
+      return total_length * volume_per_m;

@@ -4,7 +4,7 @@ one_wire:
     pin: ${onewire_pin}
     id: ${id_prefix}dallas_bus
     
-button: # clic to find onewire devices address (in logs)
+button: # click to find onewire devices address (in logs)
   - platform: template
     name: "Test onewire bus"
     on_press:
@@ -16,6 +16,9 @@ button: # clic to find onewire devices address (in logs)
       # sorting_group_id: sorting_group_actions
     
 sensor:
+  # ============================================
+  # Supply (Input) Temperature Sensor
+  # ============================================
   - platform: dallas_temp
     setup_priority: -100 #https://github.com/esphome/issues/issues/5983
     address: ${dallasaddress_input} #if only one device on bus, address is not needed
@@ -30,7 +33,9 @@ sensor:
     # web_server:
       # sorting_group_id: sorting_group_sensors
     
-
+  # ============================================
+  # Manifold Return (Output) Temperature Sensor
+  # ============================================
   - platform: dallas_temp
     setup_priority: -100 #https://github.com/esphome/issues/issues/5983
     address: ${dallasaddress_output}
