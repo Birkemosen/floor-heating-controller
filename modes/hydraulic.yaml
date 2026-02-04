@@ -205,42 +205,20 @@ number:
     restore_value: true
     initial_value: 3
 
-switch:
-  - platform: template
-    name: "Hydraulic Balancing Enabled"
-    id: ${id_prefix}balancing_enabled
-    icon: "mdi:scale-balance"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_ON
+# Note: balancing_enabled switch is defined in core/settings.yaml
+# This file enables it at boot via esphome on_boot
+
+esphome:
+  on_boot:
+    priority: -100  # Run after other on_boot handlers
+    then:
+      - switch.turn_on: ${id_prefix}balancing_enabled
+      - logger.log: "Hydraulic balancing enabled"
 
 # ============================================
-# Status Sensors
+# Additional Status Sensors
 # ============================================
 sensor:
-  - platform: template
-    name: "Average Valve Position"
-    id: ${id_prefix}avg_valve_position
-    icon: "mdi:valve"
-    unit_of_measurement: "%"
-    accuracy_decimals: 1
-    update_interval: 30s
-    lambda: |-
-      float sum = 0;
-      int count = 0;
-      
-      // Get positions from all covers
-      for (auto *cover : App.get_covers()) {
-        if (cover->position != COVER_CLOSED) {
-          sum += cover->position * 100;
-          count++;
-        }
-      }
-      
-      if (count > 0) {
-        return sum / count;
-      }
-      return 0;
-
   - platform: template
     name: "Reference Zone"
     id: ${id_prefix}reference_zone_sensor

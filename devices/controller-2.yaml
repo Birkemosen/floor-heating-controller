@@ -1,0 +1,156 @@
+# ============================================
+# Floor Heating Controller 2
+# ============================================
+# Second controller - different zones.
+# Place this file in your ESPHome config root (not in floor-heating/).
+
+external_components:
+  - source: github://pr#9021
+    refresh: 30s
+    components:
+      - adc
+
+substitutions:
+  name: floor-heating-2
+  friendly_name: "Floor Heating 2"
+  id_prefix: "ctrl2_"
+  revision: "2.0.0"
+  
+  controller_id: "2"
+  total_controllers: "2"
+  
+  TZ: "Europe/Copenhagen"
+  reboot_days_of_week: "MON"
+  reboot_hours: "4"
+  reboot_minutes: "30"
+  reboot_seconds: "0"
+  onboot_valve_calibration_delay: "1min"
+  valve_maintenance_interval: "7d"
+  
+  dallasaddress_input: "0x0000000000000000"
+  dallasaddress_output: "0x0000000000000000"
+  adc_zero_calibration: "-0.075"
+  pump_mac_address: "AA:BB:CC:DD:EE:FF"
+  
+  # Control profile: change in zone includes below
+  # Options: tanh.yaml, linear.yaml, pid.yaml, remote.yaml
+
+web_server:
+  port: 80
+  version: 3
+  log: true
+
+api:
+  reboot_timeout: 30min
+
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+  ap:
+    ssid: "${name} Fallback"
+    password: !secret fallback_password
+
+captive_portal:
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+script:
+  - id: valve_maintenance
+    then:
+      - logger.log: "Valve maintenance"
+      - script.execute: calibrate_CH1_cover
+      - delay: 300s
+      - script.execute: calibrate_CH2_cover
+
+packages:
+  # Language (en = English, da = Danish)
+  language: !include floor-heating/i18n/da.yaml
+  # language: !include floor-heating/i18n/en.yaml
+  
+  board: !include floor-heating/boards/esp32.yaml
+  
+  core_settings: !include floor-heating/core/settings.yaml
+  logger: !include floor-heating/core/logger.yaml
+  sn74hc595: !include floor-heating/core/sn74hc595.yaml
+  time: !include floor-heating/core/time.yaml
+  switch_others: !include floor-heating/core/switch_others.yaml
+  sensor_adc: !include floor-heating/core/sensor_adc.yaml
+  sensor_others: !include floor-heating/core/sensor_others.yaml
+  onewire: !include floor-heating/core/onewire.yaml
+
+  # hydraulic: !include floor-heating/modes/hydraulic.yaml
+
+  pump_control: !include
+    file: floor-heating/optional/pump_control.yaml
+    vars:
+      pump_mac_address: ${pump_mac_address}
+      circulation_check_interval: "24h"
+      circulation_run_duration: "5min"
+
+  # Control profile options (use same for all zones):
+  #   floor-heating/zones/tanh.yaml   - Smooth tanh curve control
+  #   floor-heating/zones/linear.yaml - Linear proportional control
+  #   floor-heating/zones/pid.yaml    - PID control with auto-tune
+  #   floor-heating/zones/remote.yaml - External/Home Assistant control
+  
+  zone_1: !include
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
+    vars:
+      zone_number: "1"
+      id: bedroom
+      friendly_name: "Bedroom"
+      temperature_sensor: bedroom_temp_sensor
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "14"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "2"
+      sn74hc595_IA_pin: "0"
+      sn74hc595_IB_pin: "1"
+      default_preset: HOME
+      preset_home_temp: "18 °C"
+      preset_away_temp: "17 °C"
+      preset_boost_temp: "20 °C"
+      check_interval: "15min"
+      tanh_steepness: "0.70"
+
+  zone_2: !include
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
+    vars:
+      zone_number: "2"
+      id: bathroom
+      friendly_name: "Bathroom"
+      temperature_sensor: bathroom_temp_sensor
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "8"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "1"
+      sn74hc595_IA_pin: "2"
+      sn74hc595_IB_pin: "3"
+      default_preset: HOME
+      preset_home_temp: "22 °C"
+      preset_away_temp: "20 °C"
+      preset_boost_temp: "24 °C"
+      check_interval: "16min"
+      tanh_steepness: "0.70"
+
+sensor:
+  - platform: homeassistant
+    name: "Bedroom Temp"
+    entity_id: sensor.bedroom_temperature
+    id: bedroom_temp_sensor
+
+  - platform: homeassistant
+    name: "Bathroom Temp"
+    entity_id: sensor.bathroom_temperature
+    id: bathroom_temp_sensor

@@ -1,0 +1,163 @@
+# ============================================
+# Floor Heating Controller 1
+# ============================================
+# Device config for use when repo is cloned to floor-heating/ subfolder.
+# Place this file in your ESPHome config root (not in floor-heating/).
+#
+# Folder structure:
+#   /config/
+#   ├── controller-1.yaml  (this file)
+#   ├── secrets.yaml
+#   └── floor-heating/     (this repo)
+
+external_components:
+  - source: github://pr#9021
+    refresh: 30s
+    components:
+      - adc
+
+substitutions:
+  name: floor-heating-1
+  friendly_name: "Floor Heating 1"
+  id_prefix: "ctrl1_"
+  revision: "2.0.0"
+  
+  controller_id: "1"
+  total_controllers: "2"
+  
+  TZ: "Europe/Copenhagen"
+  reboot_days_of_week: "MON"
+  reboot_hours: "4"
+  reboot_minutes: "0"
+  reboot_seconds: "0"
+  onboot_valve_calibration_delay: "1min"
+  valve_maintenance_interval: "7d"
+  
+  dallasaddress_input: "0x0000000000000000"
+  dallasaddress_output: "0x0000000000000000"
+  adc_zero_calibration: "-0.075"
+  pump_mac_address: "AA:BB:CC:DD:EE:FF"
+  
+  # Control profile: change in zone includes below
+  # Options: tanh.yaml, linear.yaml, pid.yaml, remote.yaml
+
+web_server:
+  port: 80
+  version: 3
+  log: true
+
+api:
+  reboot_timeout: 30min
+
+# WiFi - configure here or use: wifi: !include floor-heating/core/wifi.yaml
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+  ap:
+    ssid: "${name} Fallback"
+    password: !secret fallback_password
+
+captive_portal:
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+script:
+  - id: valve_maintenance
+    then:
+      - logger.log: "Valve maintenance"
+      - script.execute: calibrate_CH1_cover
+      - delay: 300s
+      - script.execute: calibrate_CH2_cover
+
+packages:
+  # Language (en = English, da = Danish)
+  language: !include floor-heating/i18n/da.yaml
+  # language: !include floor-heating/i18n/en.yaml
+  
+  board: !include floor-heating/boards/esp32.yaml
+  
+  core_settings: !include floor-heating/core/settings.yaml
+  logger: !include floor-heating/core/logger.yaml
+  sn74hc595: !include floor-heating/core/sn74hc595.yaml
+  time: !include floor-heating/core/time.yaml
+  switch_others: !include floor-heating/core/switch_others.yaml
+  sensor_adc: !include floor-heating/core/sensor_adc.yaml
+  sensor_others: !include floor-heating/core/sensor_others.yaml
+  onewire: !include floor-heating/core/onewire.yaml
+
+  # hydraulic: !include floor-heating/modes/hydraulic.yaml
+
+  pump_control: !include
+    file: floor-heating/optional/pump_control.yaml
+    vars:
+      pump_mac_address: ${pump_mac_address}
+      circulation_check_interval: "24h"
+      circulation_run_duration: "5min"
+
+  # Control profile options (use same for all zones):
+  #   floor-heating/zones/tanh.yaml   - Smooth tanh curve control
+  #   floor-heating/zones/linear.yaml - Linear proportional control
+  #   floor-heating/zones/pid.yaml    - PID control with auto-tune
+  #   floor-heating/zones/remote.yaml - External/Home Assistant control
+  
+  zone_1: !include
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
+    vars:
+      zone_number: "1"
+      id: living
+      friendly_name: "Living Room"
+      temperature_sensor: living_temp_sensor
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "25"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "2"
+      sn74hc595_IA_pin: "0"
+      sn74hc595_IB_pin: "1"
+      default_preset: HOME
+      preset_home_temp: "21 °C"
+      preset_away_temp: "18 °C"
+      preset_boost_temp: "23 °C"
+      check_interval: "15min"
+      tanh_steepness: "0.70"
+
+  zone_2: !include
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
+    vars:
+      zone_number: "2"
+      id: kitchen
+      friendly_name: "Kitchen"
+      temperature_sensor: kitchen_temp_sensor
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "18"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "1"
+      sn74hc595_IA_pin: "2"
+      sn74hc595_IB_pin: "3"
+      default_preset: HOME
+      preset_home_temp: "21 °C"
+      preset_away_temp: "18 °C"
+      preset_boost_temp: "23 °C"
+      check_interval: "16min"
+      tanh_steepness: "0.70"
+
+sensor:
+  - platform: homeassistant
+    name: "Living Room Temp"
+    entity_id: sensor.living_room_temperature
+    id: living_temp_sensor
+
+  - platform: homeassistant
+    name: "Kitchen Temp"
+    entity_id: sensor.kitchen_temperature
+    id: kitchen_temp_sensor

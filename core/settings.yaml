@@ -9,7 +9,7 @@
 # ============================================
 number:
   - platform: template
-    name: "Minimum Valve Opening"
+    name: "${str_minimum_valve_opening}"
     id: ${id_prefix}minimum_valve_opening
     icon: "mdi:valve"
     unit_of_measurement: "%"
@@ -19,9 +19,11 @@ number:
     step: 5
     restore_value: true
     initial_value: 25
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Comfort Band"
+    name: "${str_comfort_band}"
     id: ${id_prefix}comfort_band
     icon: "mdi:thermometer-lines"
     unit_of_measurement: "°C"
@@ -31,9 +33,11 @@ number:
     step: 0.1
     restore_value: true
     initial_value: 0.5
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Maintenance Base"
+    name: "${str_maintenance_base}"
     id: ${id_prefix}maintenance_base
     icon: "mdi:wrench"
     unit_of_measurement: "%"
@@ -43,9 +47,11 @@ number:
     step: 5
     restore_value: true
     initial_value: 45
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Demand Boost"
+    name: "${str_demand_boost}"
     id: ${id_prefix}demand_boost
     icon: "mdi:fire"
     unit_of_measurement: "%"
@@ -55,9 +61,11 @@ number:
     step: 5
     restore_value: true
     initial_value: 30
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Boost Factor"
+    name: "${str_boost_factor}"
     id: ${id_prefix}boost_factor
     icon: "mdi:speedometer"
     unit_of_measurement: "%"
@@ -67,9 +75,11 @@ number:
     step: 5
     restore_value: true
     initial_value: 100
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Min Movement"
+    name: "${str_min_movement}"
     id: ${id_prefix}min_movement
     icon: "mdi:arrow-expand-horizontal"
     unit_of_measurement: "%"
@@ -79,10 +89,12 @@ number:
     step: 1
     restore_value: true
     initial_value: 5
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   # Pipe settings (shared by all zones)
   - platform: template
-    name: "Pipe Spacing"
+    name: "${str_pipe_spacing}"
     id: ${id_prefix}pipe_spacing
     icon: "mdi:arrow-expand-horizontal"
     unit_of_measurement: "mm"
@@ -92,9 +104,11 @@ number:
     step: 50
     restore_value: true
     initial_value: 150
+    web_server:
+      sorting_group_id: sorting_group_settings
     
   - platform: template
-    name: "Pipe Volume per Meter"
+    name: "${str_pipe_volume}"
     id: ${id_prefix}pipe_volume_per_meter
     icon: "mdi:pipe"
     unit_of_measurement: "L/m"
@@ -104,13 +118,15 @@ number:
     step: 0.001
     restore_value: true
     initial_value: 0.113
+    web_server:
+      sorting_group_id: sorting_group_settings
 
 # ============================================
 # Pipe Type Selector
 # ============================================
 select:
   - platform: template
-    name: "Pipe Type"
+    name: "${str_pipe_type}"
     id: ${id_prefix}pipe_type
     icon: "mdi:pipe"
     optimistic: true
@@ -136,31 +152,37 @@ select:
             auto call = id(${id_prefix}pipe_volume_per_meter).make_call();
             call.set_value(volume);
             call.perform();
+    web_server:
+      sorting_group_id: sorting_group_settings
 
 # ============================================
 # Balancing Switch
 # ============================================
 switch:
   - platform: template
-    name: "Hydraulic Balancing"
+    name: "${str_hydraulic_balancing}"
     id: ${id_prefix}balancing_enabled
     icon: "mdi:scale-balance"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
+    web_server:
+      sorting_group_id: sorting_group_settings
 
   - platform: template
-    name: "Standalone Mode"
+    name: "${str_standalone_mode}"
     id: ${id_prefix}standalone_mode
     icon: "mdi:lan-disconnect"
     optimistic: true
     restore_mode: RESTORE_DEFAULT_OFF
+    web_server:
+      sorting_group_id: sorting_group_settings
 
 # ============================================
 # Status Sensors
 # ============================================
 sensor:
   - platform: template
-    name: "Average Valve Position"
+    name: "${str_avg_valve_position}"
     id: ${id_prefix}avg_valve_position
     icon: "mdi:valve"
     unit_of_measurement: "%"
@@ -175,9 +197,11 @@ sensor:
       }
       if (count > 0) return sum / count;
       return 0;
+    web_server:
+      sorting_group_id: sorting_group_status
 
   - platform: template
-    name: "Active Zones"
+    name: "${str_active_zones}"
     id: ${id_prefix}active_zones_count
     icon: "mdi:counter"
     accuracy_decimals: 0
@@ -188,48 +212,60 @@ sensor:
         if (cover->position > 0.01) count++;
       }
       return count;
+    web_server:
+      sorting_group_id: sorting_group_status
 
 # ============================================
 # Status Text Sensors
 # ============================================
 text_sensor:
   - platform: template
-    name: "Main Logs"
+    name: "${str_main_logs}"
     id: ${id_prefix}main_logs
     icon: "mdi:text-box-outline"
+    web_server:
+      sorting_group_id: sorting_group_debug
     
   - platform: template
-    name: "Position Logs"
+    name: "${str_position_logs}"
     id: ${id_prefix}position_logs
     icon: "mdi:text-box-check-outline"
+    web_server:
+      sorting_group_id: sorting_group_debug
     
   - platform: template
-    name: "BEMF Logs"
+    name: "${str_bemf_logs}"
     id: ${id_prefix}bemf_logs
     icon: "mdi:flash"
+    web_server:
+      sorting_group_id: sorting_group_debug
 
   - platform: template
-    name: "Controller Mode"
+    name: "${str_controller_mode}"
     id: ${id_prefix}controller_mode
     icon: "mdi:cog"
     update_interval: 30s
     lambda: |-
       bool wifi_connected = wifi::global_wifi_component->is_connected();
       bool api_connected = api_is_connected();
-      if (!wifi_connected) return {"Offline"};
-      if (!api_connected) return {"Standalone"};
-      return {"Connected"};
+      if (!wifi_connected) return {"${str_offline}"};
+      if (!api_connected) return {"${str_standalone}"};
+      return {"${str_connected}"};
+    web_server:
+      sorting_group_id: sorting_group_status
 
   - platform: template
-    name: "System Status"
+    name: "${str_system_status}"
     id: ${id_prefix}system_status
     icon: "mdi:information-outline"
     update_interval: 30s
     lambda: |-
       float avg = id(${id_prefix}avg_valve_position).state;
       bool bal = id(${id_prefix}balancing_enabled).state;
-      if (!bal) return {"Balancing OFF"};
-      if (avg < 30) return {"Low demand"};
-      if (avg > 90) return {"High demand"};
-      if (avg >= 50 && avg <= 80) return {"Optimal"};
-      return {"Normal"};
+      if (!bal) return {"${str_balancing_off}"};
+      if (avg < 30) return {"${str_low_demand}"};
+      if (avg > 90) return {"${str_high_demand}"};
+      if (avg >= 50 && avg <= 80) return {"${str_optimal}"};
+      return {"${str_normal}"};
+    web_server:
+      sorting_group_id: sorting_group_status

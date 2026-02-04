@@ -73,22 +73,22 @@ web_server:
   sorting_groups:
     - id: sorting_group_climate
       name: "Climate"
-      sorting_weight: 1
-    - id: sorting_group_sensors
-      name: "Sensors"
-      sorting_weight: 2
-    - id: sorting_group_actions
-      name: "Actions"
-      sorting_weight: 3
+      sorting_weight: 10
+    - id: sorting_group_settings
+      name: "Settings"
+      sorting_weight: 20
+    - id: sorting_group_status
+      name: "Status"
+      sorting_weight: 30
+    - id: sorting_group_zones
+      name: "Zone Parameters"
+      sorting_weight: 40
     - id: sorting_group_covers
       name: "Manual Covers"
-      sorting_weight: 40
-    - id: sorting_group_BEMF
-      name: "Debug: BEMF"
       sorting_weight: 50
-    - id: sorting_group_inputs
-      name: "Debug: Inputs"
-      sorting_weight: 60
+    - id: sorting_group_debug
+      name: "Debug"
+      sorting_weight: 90
 
 api:
   reboot_timeout: 30min
@@ -142,6 +142,10 @@ script:
 # Packages
 # ============================================
 packages:
+  # Language / Localization (en = English, da = Danish)
+  language: !include floor-heating/i18n/da.yaml
+  # language: !include floor-heating/i18n/en.yaml
+
   # Board
   board: !include floor-heating/boards/esp32.yaml
   # board: !include floor-heating/boards/esp32-s3.yaml

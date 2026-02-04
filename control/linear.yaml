@@ -44,6 +44,8 @@ climate:
       min_temperature: 10 °C
       max_temperature: 30 °C
       temperature_step: 0.1 °C
+    web_server:
+      sorting_group_id: sorting_group_climate
 
 # ============================================
 # Linear Check Script

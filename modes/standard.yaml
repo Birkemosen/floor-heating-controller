@@ -5,17 +5,7 @@
 # based purely on temperature difference using the selected
 # control profile (tanh, PID, or linear).
 #
-# This file is optional - standard mode works without it.
-# Include this file if you want to ensure balancing is disabled.
-
-switch:
-  - platform: template
-    name: "Hydraulic Balancing"
-    id: ${id_prefix}balancing_enabled
-    icon: "mdi:scale-balance"
-    optimistic: true
-    restore_mode: RESTORE_DEFAULT_OFF  # OFF by default in standard mode
-
-# Note: Zone templates already have fallback logic for when
-# balancing_enabled is OFF - they use the pure control profile
-# without hydraulic adjustments.
+# This file is NOT needed - standard mode is the default.
+# The balancing_enabled switch (in core/settings.yaml) is OFF by default.
+#
+# Include hydraulic.yaml instead to enable hydraulic balancing.
