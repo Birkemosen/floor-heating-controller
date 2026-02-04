@@ -1,0 +1,154 @@
+# ============================================
+# Linear Control Profile
+# ============================================
+# Linear interpolation control.
+# Position = (diff_temp + 1) / 2, mapped from [-1,1] to [0,1]
+#
+# Required vars (same as zones/base.yaml):
+#   zone_number, id, friendly_name, temperature_sensor
+#   default_preset, preset_home_temp, preset_away_temp, preset_boost_temp
+#   bemf_linked_channel
+#
+# Optional vars:
+#   check_interval: "15min"
+
+# ============================================
+# Climate Thermostat
+# ============================================
+climate:  
+  - platform: thermostat
+    id: ${id}_thermostat
+    name: ${friendly_name}
+    sensor: ${temperature_sensor}
+    default_preset: ${default_preset}
+    on_boot_restore_from: memory
+    startup_delay: true
+    preset:
+      - name: HOME
+        default_target_temperature_low: ${preset_home_temp}
+        mode: HEAT
+      - name: AWAY
+        default_target_temperature_low: ${preset_away_temp}
+        mode: HEAT
+      - name: BOOST
+        default_target_temperature_low: ${preset_boost_temp}
+        mode: HEAT
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action: 
+      - lambda: 'return;'
+    idle_action:
+      - lambda: 'return;'
+    visual:
+      min_temperature: 10 °C
+      max_temperature: 30 °C
+      temperature_step: 0.1 °C
+
+# ============================================
+# Linear Check Script
+# ============================================
+script:
+  - id: TH${zone_number}_check
+    then:
+      - lambda: |-
+          // Check if thermostat is OFF
+          if (id(${id}_thermostat).mode == CLIMATE_MODE_OFF) {
+              if (id(CH${zone_number}_cover).position > 0) {
+                  auto call = id(CH${zone_number}_cover).make_call();
+                  call.set_position(0);
+                  call.perform();
+                  ESP_LOGD("linear", "CH${zone_number} OFF, closing valve");
+              }
+              id(${id_prefix}zone_${zone_number}_state) = 0;
+              return;
+          }
+          
+          // Check if linked channel is busy
+          if (id(CH${bemf_linked_channel}_cover).current_operation != COVER_OPERATION_IDLE) {
+              ESP_LOGD("linear", "CH${zone_number} skipped - CH${bemf_linked_channel} busy");
+              return;
+          }
+          
+          // Get temperatures
+          float current_temp = id(${id}_thermostat).current_temperature;
+          float target_temp = id(${id}_thermostat).target_temperature_low;
+          float diff_temp = target_temp - current_temp;
+          
+          // Get global parameters
+          float comfort_band = id(${id_prefix}comfort_band).state;
+          float min_opening = id(${id_prefix}minimum_valve_opening).state / 100.0;
+          float boost_factor = id(${id_prefix}boost_factor).state / 100.0;
+          bool balancing_enabled = id(${id_prefix}balancing_enabled).state;
+          
+          // Classify zone state
+          bool was_overheated = id(${id_prefix}zone_${zone_number}_was_overheated);
+          int new_state;
+          
+          if (diff_temp < -comfort_band) {
+              new_state = 0;  // OVERHEATED
+              id(${id_prefix}zone_${zone_number}_was_overheated) = true;
+          } else if (was_overheated && diff_temp < 0) {
+              new_state = 0;  // Hysteresis
+          } else if (diff_temp <= comfort_band) {
+              new_state = 1;  // SATISFIED
+              id(${id_prefix}zone_${zone_number}_was_overheated) = false;
+          } else {
+              new_state = 2;  // DEMAND
+              id(${id_prefix}zone_${zone_number}_was_overheated) = false;
+          }
+          id(${id_prefix}zone_${zone_number}_state) = new_state;
+          
+          // Calculate linear position: map diff_temp from [-1,1] to [0,1]
+          float base_position = (diff_temp + 1.0) / 2.0;
+          base_position = round(base_position / 0.1) * 0.1;  // Round to 10%
+          if (base_position < 0) base_position = 0;
+          if (base_position > 1) base_position = 1;
+          
+          // Calculate final target position
+          float target_position = 0;
+          
+          if (new_state == 0) {
+              // OVERHEATED: close valve
+              target_position = 0;
+          } else if (balancing_enabled && id(${id_prefix}zone_${zone_number}_hydraulic_factor) > 0) {
+              // Hydraulic balancing mode
+              float hydraulic_factor = id(${id_prefix}zone_${zone_number}_hydraulic_factor);
+              if (new_state == 1) {
+                  // SATISFIED: use hydraulic factor as maintenance position
+                  target_position = hydraulic_factor;
+              } else {
+                  // DEMAND: use linear with boost, but at least hydraulic factor
+                  target_position = base_position * boost_factor;
+                  if (hydraulic_factor > target_position) target_position = hydraulic_factor;
+              }
+          } else {
+              // Standard mode: pure linear
+              target_position = base_position * boost_factor;
+          }
+          
+          // Apply minimum opening (when heating)
+          if (new_state != 0 && target_position < min_opening) {
+              target_position = min_opening;
+          }
+          
+          // Clamp to [0, 1]
+          if (target_position > 1) target_position = 1;
+          if (target_position < 0) target_position = 0;
+          
+          // Apply if change is significant
+          if (abs(id(CH${zone_number}_cover).position - target_position) > id(${id_prefix}min_movement).state/100) {
+              auto call = id(CH${zone_number}_cover).make_call();
+              call.set_position(target_position);
+              call.perform();
+              ESP_LOGD("linear", "CH${zone_number} set to %.0f%% (state=%d, bal=%d)", 
+                       target_position * 100, new_state, balancing_enabled);
+          }
+
+# ============================================
+# Periodic Check Interval
+# ============================================
+interval:
+  - interval: ${check_interval}
+    then:
+      - script.execute: TH${zone_number}_check

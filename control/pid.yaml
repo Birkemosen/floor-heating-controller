@@ -1,0 +1,196 @@
+# ============================================
+# PID Control Profile
+# ============================================
+# Precise control using ESPHome's PID component.
+# Requires tuning (Kp, Ki, Kd) - has autotune button.
+#
+# Required vars (same as zones/base.yaml):
+#   zone_number, id, friendly_name, temperature_sensor
+#   bemf_linked_channel
+#
+# PID-specific vars:
+#   target_temp_default: "21"
+#   pid_kp: "0.06"
+#   pid_ki: "0.00011"
+#   pid_kd: "4.0"
+
+# ============================================
+# PID Tuning Parameters
+# ============================================
+number:
+  - platform: template
+    name: "Kp CH${zone_number}"
+    id: kp_${zone_number}
+    min_value: 0.01
+    max_value: 1.00
+    step: 0.01
+    initial_value: ${pid_kp}
+    optimistic: true
+    restore_value: true
+    icon: mdi:chart-line-variant
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: PID_CH${zone_number}
+            kp: !lambda "return x;"
+            ki: !lambda "return id(PID_CH${zone_number}).get_ki();"
+            kd: !lambda "return id(PID_CH${zone_number}).get_kd();"
+
+  - platform: template
+    name: "Ki CH${zone_number}"
+    id: ki_${zone_number}
+    min_value: 0.00005
+    max_value: 0.004
+    step: 0.00005
+    initial_value: ${pid_ki}
+    optimistic: true
+    restore_value: true
+    icon: mdi:math-integral-box
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: PID_CH${zone_number}
+            kp: !lambda "return id(PID_CH${zone_number}).get_kp();"
+            ki: !lambda "return x;"
+            kd: !lambda "return id(PID_CH${zone_number}).get_kd();"
+
+  - platform: template
+    name: "Kd CH${zone_number}"
+    id: kd_${zone_number}
+    min_value: 0.01
+    max_value: 10.00
+    step: 0.01
+    initial_value: ${pid_kd}
+    optimistic: true
+    restore_value: true
+    icon: mdi:delta
+    on_value:
+      then:
+        - climate.pid.set_control_parameters:
+            id: PID_CH${zone_number}
+            kp: !lambda "return id(PID_CH${zone_number}).get_kp();"
+            ki: !lambda "return id(PID_CH${zone_number}).get_ki();"
+            kd: !lambda "return x;"
+
+# ============================================
+# PID Climate
+# ============================================
+climate:
+  - platform: pid
+    name: ${friendly_name}
+    id: PID_CH${zone_number}
+    sensor: ${temperature_sensor}
+    default_target_temperature: ${target_temp_default}
+    heat_output: heater_ch${zone_number}
+    control_parameters:
+      kp: ${pid_kp}
+      ki: ${pid_ki}
+      kd: ${pid_kd}
+      min_integral: 0.003
+      max_integral: 0.997
+      starting_integral_term: 0.1
+      output_averaging_samples: 2
+      derivative_averaging_samples: 5
+    visual:
+      min_temperature: 10 °C
+      max_temperature: 30 °C
+      temperature_step: 0.1 °C
+
+# ============================================
+# PID Output to Valve
+# ============================================
+output:
+  - platform: template
+    id: heater_ch${zone_number}
+    type: float
+    min_power: 0.001
+    max_power: 0.998
+    write_action:
+      - lambda: |-
+          // Check if linked channel is busy
+          if (id(CH${bemf_linked_channel}_cover).current_operation != COVER_OPERATION_IDLE) {
+              ESP_LOGD("pid", "CH${zone_number} skipped - CH${bemf_linked_channel} busy");
+              return;
+          }
+          
+          float min_movement = id(${id_prefix}min_movement).state / 100.0;
+          float target_position = state;
+          
+          // Apply hydraulic balancing if enabled
+          bool balancing_enabled = id(${id_prefix}balancing_enabled).state;
+          if (balancing_enabled && id(${id_prefix}zone_${zone_number}_hydraulic_factor) > 0) {
+              float hydraulic_factor = id(${id_prefix}zone_${zone_number}_hydraulic_factor);
+              if (target_position < hydraulic_factor) {
+                  target_position = hydraulic_factor;
+              }
+          }
+          
+          // Apply minimum opening
+          float min_opening = id(${id_prefix}minimum_valve_opening).state / 100.0;
+          if (target_position > 0 && target_position < min_opening) {
+              target_position = min_opening;
+          }
+          
+          // Update zone state for hydraulic balancing
+          float diff_temp = id(PID_CH${zone_number}).target_temperature - id(PID_CH${zone_number}).current_temperature;
+          float comfort_band = id(${id_prefix}comfort_band).state;
+          if (diff_temp < -comfort_band) {
+              id(${id_prefix}zone_${zone_number}_state) = 0;  // Overheated
+          } else if (diff_temp > comfort_band) {
+              id(${id_prefix}zone_${zone_number}_state) = 2;  // Demand
+          } else {
+              id(${id_prefix}zone_${zone_number}_state) = 1;  // Satisfied
+          }
+          
+          if (abs(id(CH${zone_number}_cover).position - target_position) >= min_movement) {
+              auto call = id(CH${zone_number}_cover).make_call();
+              call.set_position(target_position);
+              call.perform();
+              ESP_LOGD("pid", "CH${zone_number} set to %.0f%%", target_position * 100);
+          }
+
+# ============================================
+# PID Diagnostic Sensors
+# ============================================
+sensor:
+  - platform: pid
+    name: "PID ${friendly_name} Result"
+    id: PID_CH${zone_number}_result
+    type: RESULT
+
+  - platform: pid
+    name: "PID ${friendly_name} KP"
+    climate_id: PID_CH${zone_number}
+    type: KP
+
+  - platform: pid
+    name: "PID ${friendly_name} KI"
+    climate_id: PID_CH${zone_number}
+    type: KI
+
+  - platform: pid
+    name: "PID ${friendly_name} KD"
+    climate_id: PID_CH${zone_number}
+    type: KD
+
+# ============================================
+# Dummy check script (for compatibility)
+# ============================================
+script:
+  - id: TH${zone_number}_check
+    then:
+      - logger.log: "PID CH${zone_number} - control handled by PID component"
+
+# ============================================
+# PID Autotune Button
+# ============================================
+button:
+  - platform: template
+    name: "PID ${friendly_name} Autotune"
+    on_press:
+      - climate.pid.set_control_parameters:
+          id: PID_CH${zone_number}
+          kp: 0.0
+          ki: 0.0
+          kd: 0.0
+      - climate.pid.autotune: PID_CH${zone_number}

@@ -1,0 +1,82 @@
+# ============================================
+# Remote Control Profile
+# ============================================
+# Valve position controlled externally (e.g., Home Assistant).
+# No local control algorithm - only exposes thermostat for
+# target temperature and lets external systems control the valve.
+#
+# Required vars (same as zones/base.yaml):
+#   zone_number, id, friendly_name, temperature_sensor
+#   default_preset, preset_home_temp, preset_away_temp, preset_boost_temp
+
+# ============================================
+# Climate Thermostat (display only)
+# ============================================
+climate:  
+  - platform: thermostat
+    id: ${id}_thermostat
+    name: ${friendly_name}
+    sensor: ${temperature_sensor}
+    default_preset: ${default_preset}
+    on_boot_restore_from: memory
+    startup_delay: true
+    preset:
+      - name: HOME
+        default_target_temperature_low: ${preset_home_temp}
+        mode: HEAT
+      - name: AWAY
+        default_target_temperature_low: ${preset_away_temp}
+        mode: HEAT
+      - name: BOOST
+        default_target_temperature_low: ${preset_boost_temp}
+        mode: HEAT
+    min_heating_off_time: 300s
+    min_heating_run_time: 300s
+    min_idle_time: 30s
+    heat_action: 
+      - lambda: 'return;'  # No local action - external control
+    idle_action:
+      - lambda: 'return;'
+    visual:
+      min_temperature: 10 °C
+      max_temperature: 30 °C
+      temperature_step: 0.1 °C
+
+# ============================================
+# Dummy Check Script (for compatibility)
+# ============================================
+script:
+  - id: TH${zone_number}_check
+    then:
+      - lambda: |-
+          // Remote control - update zone state only
+          float current_temp = id(${id}_thermostat).current_temperature;
+          float target_temp = id(${id}_thermostat).target_temperature_low;
+          float diff_temp = target_temp - current_temp;
+          float comfort_band = id(${id_prefix}comfort_band).state;
+          
+          // Update zone state for hydraulic balancing compatibility
+          if (diff_temp < -comfort_band) {
+              id(${id_prefix}zone_${zone_number}_state) = 0;  // Overheated
+          } else if (diff_temp > comfort_band) {
+              id(${id_prefix}zone_${zone_number}_state) = 2;  // Demand
+          } else {
+              id(${id_prefix}zone_${zone_number}_state) = 1;  // Satisfied
+          }
+          
+          ESP_LOGD("remote", "CH${zone_number} remote control - state updated to %d", 
+                   id(${id_prefix}zone_${zone_number}_state));
+
+# ============================================
+# State Update Interval
+# ============================================
+# Periodic state update for hydraulic balancing compatibility
+interval:
+  - interval: 5min
+    then:
+      - script.execute: TH${zone_number}_check
+
+# Note: Valve position is controlled directly via:
+#   - Home Assistant cover entity
+#   - ESPHome web interface
+#   - API calls to CH${zone_number}_cover

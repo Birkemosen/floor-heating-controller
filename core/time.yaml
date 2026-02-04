@@ -11,7 +11,9 @@ time:
     then:
       - switch.toggle: floor_heating_ctrl_reboot
 
-# interval:
-  # - interval: ${valve_maintenance_interval}
-    # then:
-      # - script.execute: valve_maintenance
+# Periodic valve maintenance (exercise valves to prevent sticking)
+# Disable by setting valve_maintenance_interval: "0s" in config
+interval:
+  - interval: ${valve_maintenance_interval}
+    then:
+      - script.execute: valve_maintenance

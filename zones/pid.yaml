@@ -1,0 +1,39 @@
+# ============================================
+# Zone with PID Control (Combined)
+# ============================================
+# Complete zone: base infrastructure + PID control profile.
+# Use this file for all zones when using PID control.
+#
+# Extra required vars for PID:
+#   target_temp_default: "21"
+#   pid_kp: "0.06"
+#   pid_ki: "0.00011"
+#   pid_kd: "4.0"
+
+packages:
+  base: !include
+    file: base.yaml
+    vars:
+      zone_number: ${zone_number}
+      id: ${id}
+      friendly_name: ${friendly_name}
+      bemf_trigger_initial: ${bemf_trigger_initial}
+      zone_area_default: ${zone_area_default}
+      zone_max_opening_default: ${zone_max_opening_default}
+      bemf_sensor_adc: ${bemf_sensor_adc}
+      bemf_linked_channel: ${bemf_linked_channel}
+      sn74hc595_IA_pin: ${sn74hc595_IA_pin}
+      sn74hc595_IB_pin: ${sn74hc595_IB_pin}
+
+  control: !include
+    file: ../control/pid.yaml
+    vars:
+      zone_number: ${zone_number}
+      id: ${id}
+      friendly_name: ${friendly_name}
+      temperature_sensor: ${temperature_sensor}
+      target_temp_default: ${target_temp_default}
+      pid_kp: ${pid_kp}
+      pid_ki: ${pid_ki}
+      pid_kd: ${pid_kd}
+      bemf_linked_channel: ${bemf_linked_channel}

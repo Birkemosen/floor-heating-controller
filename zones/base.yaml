@@ -1,0 +1,197 @@
+# ============================================
+# Zone Base Infrastructure
+# ============================================
+# Common components for all control profiles.
+# Include this ONCE per zone, then add a control profile.
+#
+# Required vars:
+#   zone_number: "1"
+#   id: "living"
+#   friendly_name: "Living Room"
+#   bemf_sensor_adc: BEMF_1_2_sensor_ADC
+#   bemf_linked_channel: "2"
+#   sn74hc595_IA_pin: "0"
+#   sn74hc595_IB_pin: "1"
+#
+# Optional vars:
+#   bemf_trigger_initial: "0.650"
+#   zone_area_default: "15"
+#   zone_max_opening_default: "90"
+
+# ============================================
+# Zone State Globals
+# ============================================
+globals:
+  - id: ${id_prefix}zone_${zone_number}_state
+    type: int
+    initial_value: '-1'  # -1=unknown, 0=overheated, 1=satisfied, 2=demand
+    
+  - id: ${id_prefix}zone_${zone_number}_was_overheated
+    type: bool
+    initial_value: 'false'
+    
+  - id: ${id_prefix}zone_${zone_number}_hydraulic_factor
+    type: float
+    initial_value: '0.0'
+
+# ============================================
+# Zone Parameters
+# ============================================
+number:
+  - platform: template
+    name: "${friendly_name} Area"
+    id: ${id_prefix}zone_${zone_number}_area
+    icon: "mdi:floor-plan"
+    unit_of_measurement: "m²"
+    optimistic: true
+    min_value: 1
+    max_value: 100
+    step: 0.5
+    restore_value: true
+    initial_value: ${zone_area_default}
+    
+  - platform: template
+    name: "${friendly_name} Max Opening"
+    id: ${id_prefix}zone_${zone_number}_max_opening
+    icon: "mdi:valve-open"
+    unit_of_measurement: "%"
+    optimistic: true
+    min_value: 50
+    max_value: 100
+    step: 5
+    restore_value: true
+    initial_value: ${zone_max_opening_default}
+
+  - platform: template
+    name: "BEMF Trigger ${zone_number}"
+    id: bemf_trigger_${zone_number}
+    optimistic: true
+    min_value: 0.005
+    max_value: 1.50
+    step: 0.005
+    restore_value: true
+    initial_value: ${bemf_trigger_initial}
+
+# ============================================
+# Valve Cover (endstop-based)
+# ============================================
+cover:
+  - platform: endstop
+    name: "CH${zone_number}"
+    device_class: shutter
+    id: CH${zone_number}_cover
+    open_action:
+      - switch.turn_on: CH${zone_number}_IA_pin
+      - switch.turn_off: CH${zone_number}_IB_pin
+    open_duration: 60s
+    open_endstop: BEMF_${zone_number}_sensor
+    close_action:
+      - switch.turn_on: CH${zone_number}_IB_pin
+      - switch.turn_off: CH${zone_number}_IA_pin
+    close_duration: 60s
+    close_endstop: BEMF_${zone_number}_sensor
+    stop_action:
+      - switch.turn_off: CH${zone_number}_IA_pin
+      - switch.turn_off: CH${zone_number}_IB_pin
+    max_duration: 65s
+
+# ============================================
+# GPIO Switches for Motor Control
+# ============================================
+switch: 
+  - platform: gpio
+    name: "CH${zone_number} IA"
+    id: CH${zone_number}_IA_pin
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: ${sn74hc595_IA_pin}
+      inverted: false
+    internal: true  
+    on_turn_on:
+      - switch.turn_off: CH${zone_number}_IB_pin
+      - delay: 200ms
+    restore_mode: always off
+    
+  - platform: gpio
+    name: "CH${zone_number} IB"
+    id: CH${zone_number}_IB_pin
+    pin:
+      sn74hc595: sn74hc595_hub
+      number: ${sn74hc595_IB_pin}
+      inverted: false
+    internal: true 
+    on_turn_on:
+      - switch.turn_off: CH${zone_number}_IA_pin
+      - delay: 200ms
+    restore_mode: always off
+    
+  - platform: template
+    name: "Run ${friendly_name} Check"
+    turn_on_action:
+      - script.execute: TH${zone_number}_check
+
+# ============================================
+# BEMF Sensor (endstop detection)
+# ============================================
+binary_sensor:
+  - platform: template
+    id: BEMF_${zone_number}_sensor
+    name: "BEMF CH${zone_number}"
+    internal: true
+    lambda: return ((id(${bemf_sensor_adc}).state >= id(bemf_trigger_${zone_number}).state));
+    on_press:
+      then: 
+        - lambda: |-
+            if (id(CH${zone_number}_cover).current_operation == COVER_OPERATION_OPENING) {
+                auto call = id(CH${zone_number}_cover).make_call();
+                call.set_command_stop();
+                call.perform();
+                id(CH${zone_number}_cover).position = 1.0;
+                id(CH${zone_number}_cover).publish_state();
+                ESP_LOGD("bemf", "CH${zone_number} open endstop at %f V", id(${bemf_sensor_adc}).state);
+            } else if (id(CH${zone_number}_cover).current_operation == COVER_OPERATION_CLOSING) {
+                auto call = id(CH${zone_number}_cover).make_call();
+                call.set_command_stop();
+                call.perform();
+                id(CH${zone_number}_cover).position = 0.0;
+                id(CH${zone_number}_cover).publish_state();
+                ESP_LOGD("bemf", "CH${zone_number} close endstop at %f V", id(${bemf_sensor_adc}).state);
+            }
+
+# ============================================
+# Calculated Sensors
+# ============================================
+sensor:
+  - platform: template
+    name: "${friendly_name} Pipe Length"
+    id: ${id_prefix}zone_${zone_number}_pipe_length
+    icon: "mdi:ruler"
+    unit_of_measurement: "m"
+    accuracy_decimals: 1
+    update_interval: 60s
+    lambda: |-
+      float area = id(${id_prefix}zone_${zone_number}_area).state;
+      float spacing = id(${id_prefix}pipe_spacing).state / 1000.0;
+      if (spacing > 0) return area / spacing;
+      return 0;
+
+# ============================================
+# Calibration Script
+# ============================================
+script:
+  - id: calibrate_CH${zone_number}_cover
+    then:
+      - logger.log:
+          format: "Calibrate CH${zone_number} (${friendly_name})"
+          tag: heat_ctrl_main
+      - cover.close: CH${zone_number}_cover
+      - delay: 5s
+      - cover.open: CH${zone_number}_cover
+      - delay: 5s
+      - cover.close: CH${zone_number}_cover
+      - delay: 5s
+      - cover.open: CH${zone_number}_cover
+      - delay: 60s
+      - cover.close: CH${zone_number}_cover
+      - delay: 60s
+      - cover.close: CH${zone_number}_cover

@@ -1,21 +1,27 @@
+# ============================================
+# Floor Heating Controller - Example Config
+# ============================================
+# Complete 8-zone example using the modular structure.
+# Copy this to your ESPHome config folder and customize.
+#
+# For flashing: press BOOT button for 2-3 seconds before serial init
+# After OTA update: press EN (reset) button to run firmware
+# Do not use GPIO12 (MTDI)
 
-# for flashing : press boot button for 2-3 seconds before the serial connection initialize
-# After OTA update, the EN (reset) button must be pressed to run firmware
-# do not use gpio12 (MTDI)
-
-##### temporary fix to use new adc library (https://github.com/esphome/issues/issues/6455)
+# Temporary fix for ADC library (https://github.com/esphome/issues/issues/6455)
 external_components:
   - source: github://pr#9021 #https://github.com/esphome/esphome/pull/9021
     refresh: 30s
     components:
       - adc
 
-############## General configuration
-
+# ============================================
+# General Configuration
+# ============================================
 substitutions:
-  name: floor-heating-controller #no special characters
-  friendly_name: "Floor heating"
-  id_prefix: "heating_controller_" #if you have more than one board, it could be useful to rename all the "id:heating_controller_xxxx" with a dedicated prefix
+  name: floor-heating-controller
+  friendly_name: "Floor Heating"
+  id_prefix: "heating_"
   revision: "2.0.0"
   
   # Multi-controller configuration
@@ -28,492 +34,412 @@ substitutions:
   reboot_hours: "5"
   reboot_minutes: "0"
   reboot_seconds: "0"
-  # valve_maintenance_interval: "7days"
   onboot_valve_calibration_delay: "1min"
   
-  # Supply and manifold return temperature sensors
+  # Valve maintenance (exercise valves to prevent sticking)
+  # Set to "0s" to disable periodic maintenance
+  valve_maintenance_interval: "7d"  # 7 days
+  
+  # Dallas temperature sensors (run 1-wire scan to get addresses)
   dallasaddress_input: "0xb300000084aa6128"
   dallasaddress_output: "0xeb0000008492ad28"
   
-  # Per-zone return temperature sensors (run 1-wire scan to get addresses)
-  # Set to "0x0000000000000000" to disable a zone's return sensor
-  dallasaddress_zone_1_return: "0x0000000000000000"
-  dallasaddress_zone_2_return: "0x0000000000000000"
-  dallasaddress_zone_3_return: "0x0000000000000000"
-  dallasaddress_zone_4_return: "0x0000000000000000"
-  dallasaddress_zone_5_return: "0x0000000000000000"
-  dallasaddress_zone_6_return: "0x0000000000000000"
-  dallasaddress_zone_7_return: "0x0000000000000000"
-  dallasaddress_zone_8_return: "0x0000000000000000"
-  
-  adc_zero_calibration: "-0.075" #typical : -0.075 for esp32 devkit, 0.005 for esp32-c3. + motor eventual specific impedance
+  adc_zero_calibration: "-0.075"
   pump_mac_address: "AA:BB:CC:DD:EE:FF"
   
+  # ============================================
+  # CONTROL PROFILE: Set globally here
+  # Options: zones/tanh.yaml, zones/linear.yaml,
+  #          zones/pid.yaml, zones/remote.yaml
+  # ============================================
+  control_profile: "zones/tanh.yaml"
+
+# ============================================
+# Web Server with Sorting Groups
+# ============================================
 web_server:
   port: 80
   version: 3
-  # sorting_groups:
-    # - id: sorting_group_climate
-      # name: "Climate"
-      # sorting_weight: 1
-    # - id: sorting_group_sensors
-      # name: "Sensors"
-      # sorting_weight: 2
-    # - id: sorting_group_actions
-      # name: "Actions"
-      # sorting_weight: 3
-    # - id: sorting_group_covers
-      # name: "Manual covers"
-      # sorting_weight: 40
-    # - id: sorting_group_BEMF
-      # name: "Debug : BEMF"
-      # sorting_weight: 50
-    # - id: sorting_group_inputs
-      # name: "Debug : inputs"
-      # sorting_weight: 60
   log: true
-  # local: false #true in case of no internet
-  
-# Enable HOME Assistant API
+  sorting_groups:
+    - id: sorting_group_climate
+      name: "Climate"
+      sorting_weight: 1
+    - id: sorting_group_sensors
+      name: "Sensors"
+      sorting_weight: 2
+    - id: sorting_group_actions
+      name: "Actions"
+      sorting_weight: 3
+    - id: sorting_group_covers
+      name: "Manual Covers"
+      sorting_weight: 40
+    - id: sorting_group_BEMF
+      name: "Debug: BEMF"
+      sorting_weight: 50
+    - id: sorting_group_inputs
+      name: "Debug: Inputs"
+      sorting_weight: 60
+
 api:
   reboot_timeout: 30min
 
-  
-############## Channels definition (packages as template : https://espHOME.io/guides/configuration-types.html#packages-as-templates)
+# ============================================
+# Valve Maintenance
+# ============================================
+script:
+  - id: valve_maintenance
+    then:
+      - logger.log: "Valve maintenance"
+      - script.execute: calibrate_CH1_cover
+      - delay: 300s
+      - script.execute: calibrate_CH2_cover
+      - delay: 300s
+      - script.execute: calibrate_CH3_cover
+      - delay: 300s
+      - script.execute: calibrate_CH4_cover
+      - delay: 300s
+      - script.execute: calibrate_CH5_cover
+      - delay: 300s
+      - script.execute: calibrate_CH6_cover
+      - delay: 300s
+      - script.execute: calibrate_CH7_cover
+      - delay: 300s
+      - script.execute: calibrate_CH8_cover
+
+# ============================================
+# Packages
+# ============================================
 packages:
-##### Sample Pump controll via ESP Now
+  # Board (uncomment one)
+  board: !include boards/esp32.yaml
+  # board: !include boards/esp32-s3.yaml
+  # board: !include boards/esp32-c3.yaml
+  
+  # Core infrastructure
+  core_settings: !include core/settings.yaml
+  logger: !include core/logger.yaml
+  sn74hc595: !include core/sn74hc595.yaml
+  wifi: !include core/wifi.yaml
+  time: !include core/time.yaml
+  switch_others: !include core/switch_others.yaml
+  inputs: !include core/inputs.yaml
+  sensor_adc: !include core/sensor_adc.yaml
+  sensor_others: !include core/sensor_others.yaml
+  onewire: !include core/onewire.yaml
 
+  # ============================================
+  # MODE: Uncomment for hydraulic balancing
+  # ============================================
+  # hydraulic: !include modes/hydraulic.yaml
+
+  # ============================================
+  # Optional: Pump control via ESP-NOW
+  # ============================================
   pump_control: !include
-      file: pump_control.yaml
-      vars:
-        pump_mac_address: ${pump_mac_address}
-        circulation_check_interval: "24h"
-        circulation_run_duration: "5min"
-
-##### Sample PID config
-  # channel_1: !include
-    # file: heating_channel_PID.yaml
-    # vars:
-      # channel_number: 1
-      # id: wc #bad
-      # frendly_name: wc #bad
-      # temperature_sensor: corridor_temperature_sensor
-      # default_target_temperature_low: "21 °C"
-      # pid_kp: "0.06"
-      # pid_ki: "0.00011"
-      # pid_kd: "4.0"
-      # visual_min_temperature: "10 °C"
-      # visual_max_temperature: "30 °C"
-      # visual_temperature_step: "0.1 °C"
-      # bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      ### do not change : 
-      # bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      # bemf_linked_with_channel: 2
-      # sn74hc595_IA_pin: 0
-      # sn74hc595_IB_pin: 1
- 
-##### Sample linear config 
-  # channel_2: !include
-    # file: heating_channel_linear.yaml
-    # vars:
-      # channel_number: 2
-      # id: storage
-      # frendly_name: storage
-      # temperature_sensor: reduit_temperature_sensor
-      # default_preset: HOME
-      # preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      # preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      # preset_1_target_temperature_low: "19 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      # preset_2_name: AWAY 
-      # preset_2_mode: HEAT
-      # preset_2_target_temperature_low: "18 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      # preset_3_name: BOOST 
-      # preset_3_mode: HEAT
-      # preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      # visual_min_temperature: "10 °C"
-      # visual_max_temperature: "30 °C"
-      # visual_temperature_step: "0.1 °C"
-      # check_interval: "16min"
-      # bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      # do not change : 
-      # bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      # bemf_linked_with_channel: 1
-      # sn74hc595_IA_pin: 2
-      # sn74hc595_IB_pin: 3
-      
-##### Sample tanh (non linear) config 
-  # channel_1: !include
-    # file: heating_channel_tanh.yaml
-    # vars:
-      # channel_number: 1
-      # id: wc
-      # frendly_name: wc
-      # temperature_sensor: corridor_temperature_sensor #must match one sensor defined in sensor_temperature.yaml
-      # default_preset: HOME
-      # preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      # preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      # preset_1_target_temperature_low: "19 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      # preset_2_name: AWAY 
-      # preset_2_mode: HEAT
-      # preset_2_target_temperature_low: "18 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      # preset_3_name: BOOST 
-      # preset_3_mode: HEAT
-      # preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      # visual_min_temperature: "10 °C"
-      # visual_max_temperature: "30 °C"
-      # visual_temperature_step: "0.1 °C"
-      # check_interval: "15min"
-      # bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      # tanh_steepness: "0.70" ############# NEW
-      # #do not change : 
-      # bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      # bemf_linked_with_channel: 2
-      # sn74hc595_IA_pin: 0
-      # sn74hc595_IB_pin: 1
-      
-##### Sample fully remote controlled channel config 
-  # channel_1: !include
-    # file: heating_channel_remote_controlled.yaml
-    # vars:
-      # channel_number: 1
-      # id: wc
-      # frendly_name: wc
-      # temperature_sensor: corridor_temperature_sensor #must match one sensor defined in sensor_temperature.yaml
-      # default_preset: HOME
-      # preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      # preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      # preset_1_target_temperature_low: "19 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      # preset_2_name: AWAY 
-      # preset_2_mode: HEAT
-      # preset_2_target_temperature_low: "18 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      # preset_3_name: BOOST 
-      # preset_3_mode: HEAT
-      # preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      # visual_min_temperature: "10 °C"
-      # visual_max_temperature: "30 °C"
-      # visual_temperature_step: "0.1 °C"
-      # #check_interval: "15min"
-      # bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      # #tanh_steepness: "0.70" ### new parameter for heating_channel_tanh.yaml only
-      # #do not change : 
-      # bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      # bemf_linked_with_channel: 2
-      # sn74hc595_IA_pin: 0
-      # sn74hc595_IB_pin: 1
-
-#### normal channel config
-  channel_1: !include
-    file: heating_channel_tanh.yaml
+    file: optional/pump_control.yaml
     vars:
-      channel_number: 1
+      pump_mac_address: ${pump_mac_address}
+      circulation_check_interval: "24h"
+      circulation_run_duration: "5min"
+
+  # ============================================
+  # Optional: MQTT Ecodan integration
+  # ============================================
+  # mqtt_ecodan: !include optional/mqtt_ecodan.yaml
+
+  # ============================================
+  # ZONES: All use ${control_profile}
+  # ============================================
+  zone_1: !include
+    file: ${control_profile}
+    vars:
+      zone_number: "1"
       id: wc
-      frendly_name: wc
-      temperature_sensor: corridor_temperature_sensor #must match one sensor defined in sensor_temperature.yaml
-      default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
-      check_interval: "15min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      tanh_steepness: "0.70" ### new parameter for heating_channel_tanh.yaml only
-      # do not change : 
+      friendly_name: "WC"
+      temperature_sensor: corridor_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "4"
+      zone_max_opening_default: "90"
       bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      bemf_linked_with_channel: 2
-      sn74hc595_IA_pin: 0
-      sn74hc595_IB_pin: 1
-      
-      
+      bemf_linked_channel: "2"
+      sn74hc595_IA_pin: "0"
+      sn74hc595_IB_pin: "1"
+      default_preset: HOME
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
+      check_interval: "15min"
+      tanh_steepness: "0.70"
 
-  channel_2: !include
-    file: heating_channel_tanh.yaml
+  zone_2: !include
+    file: ${control_profile}
     vars:
-      channel_number: 2
+      zone_number: "2"
       id: storage
-      frendly_name: storage
-      temperature_sensor: reduit_temperature_sensor
-      default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
-      check_interval: "16min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      tanh_steepness: "0.70"
-      ## do not change : 
+      friendly_name: "Storage"
+      temperature_sensor: storage_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "6"
+      zone_max_opening_default: "90"
       bemf_sensor_adc: BEMF_1_2_sensor_ADC
-      bemf_linked_with_channel: 1
-      sn74hc595_IA_pin: 2
-      sn74hc595_IB_pin: 3
-      
-
-      
-  channel_3: !include
-    file: heating_channel_tanh.yaml
-    vars:
-      channel_number: 3
-      id: living
-      frendly_name: living
-      temperature_sensor: living_room_temperature_sensor
+      bemf_linked_channel: "1"
+      sn74hc595_IA_pin: "2"
+      sn74hc595_IB_pin: "3"
       default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
-      check_interval: "17min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      tanh_steepness: "0.70"
-      ## do not change :
-      bemf_sensor_adc: BEMF_3_4_sensor_ADC
-      bemf_linked_with_channel: 4
-      sn74hc595_IA_pin: 4
-      sn74hc595_IB_pin: 5
-      
-      
-  channel_4: !include
-    file: heating_channel_tanh.yaml
-    vars:
-      channel_number: 4
-      id: dining
-      frendly_name: dining
-      temperature_sensor: living_room_temperature_sensor #indoor_temperature_sensor
-      default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
-      check_interval: "18min"  
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      tanh_steepness: "0.70"
-      ## do not change :
-      bemf_sensor_adc: BEMF_3_4_sensor_ADC
-      bemf_linked_with_channel: 3
-      sn74hc595_IA_pin: 6
-      sn74hc595_IB_pin: 7
-        
- 
-  channel_5: !include
-    file: heating_channel_tanh.yaml
-    vars:
-      channel_number: 5
-      id: kitchen
-      frendly_name: kitchen
-      temperature_sensor: living_room_temperature_sensor
-      # default_target_temperature_low: "21 °C"
-      # pid_kp: "0.06"
-      # pid_ki: "0.00011"
-      # pid_kd: "4.0"
-      # visual_min_temperature: "10 °C"
-      # visual_max_temperature: "30 °C"
-      # visual_temperature_step: "0.1 °C"
-      default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
-      check_interval: "15min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
-      tanh_steepness: "0.70"
-      ## do not change :
-      bemf_sensor_adc: BEMF_5_6_sensor_ADC
-      bemf_linked_with_channel: 6
-      sn74hc595_IA_pin: 8
-      sn74hc595_IB_pin: 9
-           
-      
-      
-  channel_6: !include
-    file: heating_channel_tanh.yaml
-    vars:
-      channel_number: 6
-      id: office
-      frendly_name: office
-      temperature_sensor: office_temperature_sensor
-      default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "21 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "19 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "23 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
       check_interval: "16min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
       tanh_steepness: "0.70"
-      ## do not change :
-      bemf_sensor_adc: BEMF_5_6_sensor_ADC
-      bemf_linked_with_channel: 5
-      sn74hc595_IA_pin: 10
-      sn74hc595_IB_pin: 11
-      
-      
-  channel_7: !include
-    file: heating_channel_tanh.yaml
+
+  zone_3: !include
+    file: ${control_profile}
     vars:
-      channel_number: 7
-      id: bedroom
-      frendly_name: bedroom
-      temperature_sensor: bedroom_temperature_sensor
+      zone_number: "3"
+      id: living
+      friendly_name: "Living Room"
+      temperature_sensor: living_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "25"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_3_4_sensor_ADC
+      bemf_linked_channel: "4"
+      sn74hc595_IA_pin: "4"
+      sn74hc595_IB_pin: "5"
       default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "18 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "20 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "18 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "19 °C"
-      # preset_3_target_temperature_high: "24 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
       check_interval: "17min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
       tanh_steepness: "0.70"
-      ## do not change :
-      bemf_sensor_adc: BEMF_7_8_sensor_ADC
-      bemf_linked_with_channel: 8
-      sn74hc595_IA_pin: 12
-      sn74hc595_IB_pin: 13
-         
-      
-  channel_8: !include
-    file: heating_channel_tanh.yaml
+
+  zone_4: !include
+    file: ${control_profile}
     vars:
-      channel_number: 8
-      id: bathroom
-      frendly_name: bathroom
-      temperature_sensor: bathroom_temperature_sensor
+      zone_number: "4"
+      id: dining
+      friendly_name: "Dining Room"
+      temperature_sensor: living_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "15"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_3_4_sensor_ADC
+      bemf_linked_channel: "3"
+      sn74hc595_IA_pin: "6"
+      sn74hc595_IB_pin: "7"
       default_preset: HOME
-      preset_1_name: HOME #ECO, AWAY, BOOST, COMFORT, HOME, SLEEP, ACTIVITY
-      preset_1_mode: HEAT #OFF, AUTO, HEAT, COOL, HEAT, FAN_ONLY, DRY
-      preset_1_target_temperature_low: "22 °C" #ASHRAE studies recommend 21°C with a band of 2°C which result in 90% occupant acceptability
-      # preset_1_target_temperature_high: "24 °C"
-      preset_2_name: AWAY 
-      preset_2_mode: HEAT
-      preset_2_target_temperature_low: "20 °C"
-      # preset_2_target_temperature_high: "19 °C"
-      preset_3_name: BOOST 
-      preset_3_mode: HEAT
-      preset_3_target_temperature_low: "24 °C"
-      # preset_3_target_temperature_high: "25 °C"
-      visual_min_temperature: "10 °C"
-      visual_max_temperature: "30 °C"
-      visual_temperature_step: "0.1 °C"
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
       check_interval: "18min"
-      bemf_trigger_initial_value: "0.650" # 0.105 for boards < v60 | 0.650 for boards >=v61
       tanh_steepness: "0.70"
-      ## do not change :
+
+  zone_5: !include
+    file: ${control_profile}
+    vars:
+      zone_number: "5"
+      id: kitchen
+      friendly_name: "Kitchen"
+      temperature_sensor: living_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "12"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_5_6_sensor_ADC
+      bemf_linked_channel: "6"
+      sn74hc595_IA_pin: "8"
+      sn74hc595_IB_pin: "9"
+      default_preset: HOME
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
+      check_interval: "15min"
+      tanh_steepness: "0.70"
+
+  zone_6: !include
+    file: ${control_profile}
+    vars:
+      zone_number: "6"
+      id: office
+      friendly_name: "Office"
+      temperature_sensor: office_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "10"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_5_6_sensor_ADC
+      bemf_linked_channel: "5"
+      sn74hc595_IA_pin: "10"
+      sn74hc595_IB_pin: "11"
+      default_preset: HOME
+      preset_home_temp: "21 °C"
+      preset_away_temp: "19 °C"
+      preset_boost_temp: "23 °C"
+      check_interval: "16min"
+      tanh_steepness: "0.70"
+
+  zone_7: !include
+    file: ${control_profile}
+    vars:
+      zone_number: "7"
+      id: bedroom
+      friendly_name: "Bedroom"
+      temperature_sensor: bedroom_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "14"
+      zone_max_opening_default: "90"
       bemf_sensor_adc: BEMF_7_8_sensor_ADC
-      bemf_linked_with_channel: 7
-      sn74hc595_IA_pin: 14
-      sn74hc595_IB_pin: 15
-         
+      bemf_linked_channel: "8"
+      sn74hc595_IA_pin: "12"
+      sn74hc595_IB_pin: "13"
+      default_preset: HOME
+      preset_home_temp: "18 °C"
+      preset_away_temp: "18 °C"
+      preset_boost_temp: "19 °C"
+      check_interval: "17min"
+      tanh_steepness: "0.70"
 
+  zone_8: !include
+    file: ${control_profile}
+    vars:
+      zone_number: "8"
+      id: bathroom
+      friendly_name: "Bathroom"
+      temperature_sensor: bathroom_temp
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "8"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_7_8_sensor_ADC
+      bemf_linked_channel: "7"
+      sn74hc595_IA_pin: "14"
+      sn74hc595_IB_pin: "15"
+      default_preset: HOME
+      preset_home_temp: "22 °C"
+      preset_away_temp: "20 °C"
+      preset_boost_temp: "24 °C"
+      check_interval: "18min"
+      tanh_steepness: "0.70"
 
+# ============================================
+# TEMPERATURE SENSORS
+# ============================================
+# Choose sensor type based on your setup.
+# The sensor ID must match the zone's temperature_sensor variable.
 
+sensor:
+  # ============================================
+  # Option 1: Home Assistant sensors (recommended)
+  # Uses existing sensors from Home Assistant
+  # ============================================
+  - platform: homeassistant
+    name: "Corridor Temperature"
+    entity_id: sensor.corridor_temperature
+    id: corridor_temp
 
-  
-  # Board configuration (uncomment the one you're using)
-  board: !include board_esp32.yaml
-  # board: !include board_esp32-C3.yaml
-  # board: !include board_esp32-S3.yaml
-  
-  # Core includes
-  logger: !include logger.yaml
-  sn74hc595: !include sn74hc595.yaml
-  wifi: !include wifi.yaml
-  time: !include time.yaml
-  script_calibrate_valves: !include script_calibrate_valves.yaml
-  switch_others: !include switch_others.yaml
-  inputs: !include inputs.yaml
-  sensor_adc: !include sensor_adc.yaml
-  sensor_temperature: !include sensor_temperature.yaml
-  sensor_others: !include sensor_others.yaml
-  onewire: !include onewire.yaml #only for boards >= rev 61
-  
-  # Hydraulic balancing system (new)
-  zone_parameters: !include zone_parameters.yaml
-  sensor_return_temperature: !include sensor_return_temperature.yaml
-  hydraulic_balancing: !include hydraulic_balancing.yaml
-  standalone_control: !include standalone_control.yaml
-  
-  # MQTT integration for Ecodan heat pump (optional - comment out if not using MQTT)
-  # mqtt_ecodan: !include mqtt_ecodan_integration.yaml
+  - platform: homeassistant
+    name: "Storage Temperature"
+    entity_id: sensor.storage_temperature
+    id: storage_temp
 
+  - platform: homeassistant
+    name: "Living Room Temperature"
+    entity_id: sensor.living_room_temperature
+    id: living_temp
+
+  - platform: homeassistant
+    name: "Office Temperature"
+    entity_id: sensor.office_temperature
+    id: office_temp
+
+  - platform: homeassistant
+    name: "Bedroom Temperature"
+    entity_id: sensor.bedroom_temperature
+    id: bedroom_temp
+
+  - platform: homeassistant
+    name: "Bathroom Temperature"
+    entity_id: sensor.bathroom_temperature
+    id: bathroom_temp
+
+  # ============================================
+  # Option 2: Dallas/OneWire DS18B20 sensors
+  # Requires onewire component (included in core)
+  # Run "esphome logs config.yaml" to get addresses
+  # ============================================
+  # - platform: dallas_temp
+  #   address: 0x1234567890abcdef
+  #   name: "Living Room Temperature"
+  #   id: living_temp
+  #   resolution: 12
+  #   accuracy_decimals: 1
+  #   filters:
+  #     - offset: 0.0
+
+  # ============================================
+  # Option 3: DHT22/DHT11/AM2302 sensors
+  # Direct GPIO connection
+  # ============================================
+  # - platform: dht
+  #   model: DHT22  # or DHT11, AM2302
+  #   pin: GPIO25
+  #   temperature:
+  #     name: "Living Room Temperature"
+  #     id: living_temp
+  #   humidity:
+  #     name: "Living Room Humidity"
+  #   update_interval: 30s
+
+  # ============================================
+  # Option 4: BLE Xiaomi sensors (via ESP32 BLE)
+  # Requires esp32_ble_tracker component
+  # ============================================
+  # esp32_ble_tracker:
+  #
+  # - platform: xiaomi_lywsdcgq
+  #   mac_address: "58:2D:34:37:F1:10"
+  #   temperature:
+  #     name: "Living Room Temperature"
+  #     id: living_temp
+  #   humidity:
+  #     name: "Living Room Humidity"
+  #   battery_level:
+  #     name: "Living Room Sensor Battery"
+
+  # ============================================
+  # Option 5: BLE Xiaomi via Home Assistant
+  # When BLE sensors are in HA via another integration
+  # ============================================
+  # - platform: homeassistant
+  #   name: "Living Room Temperature"
+  #   entity_id: sensor.ble_xiaomi_living_temperature
+  #   id: living_temp
+
+  # ============================================
+  # Option 6: SHT3x/SHT4x I2C sensors
+  # Requires i2c component
+  # ============================================
+  # i2c:
+  #   sda: GPIO21
+  #   scl: GPIO22
+  #
+  # - platform: sht3xd
+  #   temperature:
+  #     name: "Living Room Temperature"
+  #     id: living_temp
+  #   humidity:
+  #     name: "Living Room Humidity"
+  #   address: 0x44
+  #   update_interval: 30s
+
+  # ============================================
+  # Option 7: BME280/BMP280 I2C sensors
+  # ============================================
+  # - platform: bme280_i2c
+  #   temperature:
+  #     name: "Living Room Temperature"
+  #     id: living_temp
+  #   humidity:
+  #     name: "Living Room Humidity"
+  #   pressure:
+  #     name: "Living Room Pressure"
+  #   address: 0x76
+  #   update_interval: 30s

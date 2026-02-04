@@ -1,0 +1,32 @@
+# ============================================
+# Per-Zone Return Temperature Sensor (Template)
+# ============================================
+# Include this file for each zone you need.
+#
+# Required vars:
+#   zone_number: "1"
+#   dallas_address: "0x..."
+#
+# Example in device config:
+#   zone_1_return: !include
+#     file: floor-heating/sensor_return_temperature_zone.yaml
+#     vars:
+#       zone_number: "1"
+#       dallas_address: ${dallasaddress_zone_1_return}
+
+sensor:
+  - platform: dallas_temp
+    setup_priority: -100
+    address: ${dallas_address}
+    name: "Zone ${zone_number} Return Temp"
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer-water"
+    device_class: "temperature"
+    state_class: "measurement"
+    accuracy_decimals: 2
+    update_interval: 30s
+    id: ${id_prefix}zone_${zone_number}_return_temp
+    filters:
+      - sliding_window_moving_average:
+          window_size: 3
+          send_every: 1

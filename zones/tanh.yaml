@@ -1,0 +1,35 @@
+# ============================================
+# Zone with Tanh Control (Combined)
+# ============================================
+# Complete zone: base infrastructure + tanh control profile.
+# Use this file for all zones when using tanh control.
+
+packages:
+  base: !include
+    file: base.yaml
+    vars:
+      zone_number: ${zone_number}
+      id: ${id}
+      friendly_name: ${friendly_name}
+      bemf_trigger_initial: ${bemf_trigger_initial}
+      zone_area_default: ${zone_area_default}
+      zone_max_opening_default: ${zone_max_opening_default}
+      bemf_sensor_adc: ${bemf_sensor_adc}
+      bemf_linked_channel: ${bemf_linked_channel}
+      sn74hc595_IA_pin: ${sn74hc595_IA_pin}
+      sn74hc595_IB_pin: ${sn74hc595_IB_pin}
+
+  control: !include
+    file: ../control/tanh.yaml
+    vars:
+      zone_number: ${zone_number}
+      id: ${id}
+      friendly_name: ${friendly_name}
+      temperature_sensor: ${temperature_sensor}
+      default_preset: ${default_preset}
+      preset_home_temp: ${preset_home_temp}
+      preset_away_temp: ${preset_away_temp}
+      preset_boost_temp: ${preset_boost_temp}
+      check_interval: ${check_interval}
+      tanh_steepness: ${tanh_steepness}
+      bemf_linked_channel: ${bemf_linked_channel}

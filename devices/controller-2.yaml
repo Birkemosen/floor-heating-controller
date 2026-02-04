@@ -1,0 +1,122 @@
+# ============================================
+# Floor Heating Controller 2
+# ============================================
+# Second controller - different zones
+
+external_components:
+  - source: github://pr#9021
+    refresh: 30s
+    components:
+      - adc
+
+substitutions:
+  name: floor-heating-2
+  friendly_name: "Floor Heating 2"
+  id_prefix: "ctrl2_"
+  revision: "2.0.0"
+  
+  controller_id: "2"
+  total_controllers: "2"
+  
+  TZ: "Europe/Copenhagen"
+  reboot_days_of_week: "MON"
+  reboot_hours: "4"
+  reboot_minutes: "30"
+  reboot_seconds: "0"
+  onboot_valve_calibration_delay: "1min"
+  valve_maintenance_interval: "7d"
+  
+  dallasaddress_input: "0x0000000000000000"
+  dallasaddress_output: "0x0000000000000000"
+  
+  adc_zero_calibration: "-0.075"
+  pump_mac_address: "AA:BB:CC:DD:EE:FF"
+
+web_server:
+  port: 80
+  version: 3
+  log: true
+
+api:
+  reboot_timeout: 30min
+
+script:
+  - id: valve_maintenance
+    then:
+      - logger.log: "Valve maintenance starting"
+      - script.execute: calibrate_CH1_cover
+      - delay: 300s
+      - script.execute: calibrate_CH2_cover
+
+packages:
+  board: !include floor-heating/board_esp32.yaml
+  logger: !include floor-heating/logger.yaml
+  sn74hc595: !include floor-heating/sn74hc595.yaml
+  wifi: !include floor-heating/wifi.yaml
+  time: !include floor-heating/time.yaml
+  switch_others: !include floor-heating/switch_others.yaml
+  inputs: !include floor-heating/inputs.yaml
+  sensor_adc: !include floor-heating/sensor_adc.yaml
+  sensor_others: !include floor-heating/sensor_others.yaml
+  onewire: !include floor-heating/onewire.yaml
+  core_settings: !include floor-heating/core_settings.yaml
+  
+  pump_control: !include
+    file: floor-heating/pump_control.yaml
+    vars:
+      pump_mac_address: ${pump_mac_address}
+      circulation_check_interval: "24h"
+      circulation_run_duration: "5min"
+
+  zone_1: !include
+    file: floor-heating/zone.yaml
+    vars:
+      zone_number: "1"
+      id: bedroom
+      friendly_name: "Bedroom"
+      temperature_sensor: bedroom_temp_sensor
+      default_preset: HOME
+      preset_home_temp: "19 °C"
+      preset_away_temp: "17 °C"
+      preset_boost_temp: "21 °C"
+      check_interval: "15min"
+      tanh_steepness: "0.70"
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "20"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "2"
+      sn74hc595_IA_pin: "0"
+      sn74hc595_IB_pin: "1"
+
+  zone_2: !include
+    file: floor-heating/zone.yaml
+    vars:
+      zone_number: "2"
+      id: bathroom
+      friendly_name: "Bathroom"
+      temperature_sensor: bathroom_temp_sensor
+      default_preset: HOME
+      preset_home_temp: "22 °C"
+      preset_away_temp: "20 °C"
+      preset_boost_temp: "24 °C"
+      check_interval: "16min"
+      tanh_steepness: "0.70"
+      bemf_trigger_initial: "0.650"
+      zone_area_default: "8"
+      zone_max_opening_default: "90"
+      bemf_sensor_adc: BEMF_1_2_sensor_ADC
+      bemf_linked_channel: "1"
+      sn74hc595_IA_pin: "2"
+      sn74hc595_IB_pin: "3"
+
+sensor:
+  - platform: homeassistant
+    name: "Bedroom Temp"
+    entity_id: sensor.bedroom_temperature
+    id: bedroom_temp_sensor
+
+  - platform: homeassistant
+    name: "Bathroom Temp"
+    entity_id: sensor.bathroom_temperature
+    id: bathroom_temp_sensor
