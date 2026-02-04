@@ -1,24 +1,35 @@
+# ============================================
+# WiFi Configuration (Multi-Network)
+# ============================================
+# OPTIONAL: Use this for multi-network setups.
+# For simple single-network, configure wifi directly in config.yaml.
+#
+# To use: wifi: !include floor-heating/core/wifi.yaml
+# 
+# Requires secrets:
+#   wifi_ssid_1, wifi_password_1
+#   wifi_ssid_2, wifi_password_2 (optional)
+#   wifi_ssid_3, wifi_password_3 (optional)
+#   fallback_hotspot_password
 
 wifi:
   #use_address: floor-heating-controller-v2.local  #use if you want to change device name once.
   networks:
-  - ssid: !secret wifi_ssid_1
-    #hidden: true
-    password: !secret wifi_password_1
-    priority : 1
-  - ssid: !secret wifi_ssid_2
-    #hidden: true
-    password: !secret wifi_password_2
-    priority : 2
-  - ssid: !secret wifi_ssid_3
-    password: !secret wifi_password_3
-    priority : 3
-#  use_address: floor_heating_controller.local
-
-# Enable fallback hotspot (captive portal) in case wifi connection fails
+    - ssid: !secret wifi_ssid_1
+      password: !secret wifi_password_1
+      priority: 1
+    - ssid: !secret wifi_ssid_2
+      password: !secret wifi_password_2
+      priority: 2
+    - ssid: !secret wifi_ssid_3
+      password: !secret wifi_password_3
+      priority: 3
   ap:
-    ssid: "${name} Flbck"
+    ssid: "${name} Fallback"
     password: !secret fallback_hotspot_password
-    
+
 captive_portal:
 
+ota:
+  platform: esphome
+  password: !secret ota_password

@@ -46,23 +46,4 @@ logger:
                         # return std::string(pos, len);
                     # }
                 # }
-                # return "";    
-
-text_sensor:  
-  - platform: template
-    name: "${friendly_name} main logs"
-    entity_category: diagnostic
-    icon: mdi:math-log
-    id: ${id_prefix}main_logs
-    
-  - platform: template
-    name: "${friendly_name} position logs"
-    entity_category: diagnostic
-    icon: mdi:math-log
-    id: ${id_prefix}position_logs
-    
-  - platform: template
-    name: "${friendly_name} bemf logs"
-    entity_category: diagnostic
-    icon: mdi:math-log
-    id: ${id_prefix}bemf_logs
+                # return "";

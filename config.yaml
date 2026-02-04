@@ -1,8 +1,13 @@
 # ============================================
 # Floor Heating Controller - Example Config
 # ============================================
-# Complete 8-zone example using the modular structure.
-# Copy this to your ESPHome config folder and customize.
+# Complete 8-zone example.
+#
+# SETUP: Clone this repo to floor-heating/ subfolder:
+#   /config/
+#   ├── config.yaml        (copy this file here)
+#   ├── secrets.yaml
+#   └── floor-heating/     (this repo)
 #
 # For flashing: press BOOT button for 2-3 seconds before serial init
 # After OTA update: press EN (reset) button to run firmware
@@ -23,7 +28,7 @@ substitutions:
   friendly_name: "Floor Heating"
   id_prefix: "heating_"
   revision: "2.0.0"
-  
+   
   # Multi-controller configuration
   controller_id: "1"  # Change to "2" for second controller
   total_controllers: "2"  # Total number of controllers in the system
@@ -48,14 +53,18 @@ substitutions:
   pump_mac_address: "AA:BB:CC:DD:EE:FF"
   
   # ============================================
-  # CONTROL PROFILE: Set globally here
-  # Options: zones/tanh.yaml, zones/linear.yaml,
-  #          zones/pid.yaml, zones/remote.yaml
+  # CONTROL PROFILE
   # ============================================
-  control_profile: "zones/tanh.yaml"
+  # NOTE: ESPHome does not support substitutions in !include paths.
+  # To change control profile, manually replace the path in all zone includes below.
+  # Options:
+  #   floor-heating/zones/tanh.yaml   (default)
+  #   floor-heating/zones/linear.yaml
+  #   floor-heating/zones/pid.yaml
+  #   floor-heating/zones/remote.yaml
 
 # ============================================
-# Web Server with Sorting Groups
+# Web Server
 # ============================================
 web_server:
   port: 80
@@ -85,6 +94,28 @@ api:
   reboot_timeout: 30min
 
 # ============================================
+# WiFi Configuration
+# ============================================
+# Configure directly here or use: wifi: !include floor-heating/core/wifi.yaml
+wifi:
+  networks:
+    - ssid: !secret wifi_ssid
+      password: !secret wifi_password
+  # Additional networks (optional):
+  # - ssid: !secret wifi_ssid_2
+  #   password: !secret wifi_password_2
+  #   priority: 2
+  ap:
+    ssid: "UFH_Fallback"
+    password: !secret fallback_password
+
+captive_portal:
+
+ota:
+  platform: esphome
+  password: !secret ota_password
+
+# ============================================
 # Valve Maintenance
 # ============================================
 script:
@@ -111,33 +142,31 @@ script:
 # Packages
 # ============================================
 packages:
-  # Board (uncomment one)
-  board: !include boards/esp32.yaml
-  # board: !include boards/esp32-s3.yaml
-  # board: !include boards/esp32-c3.yaml
+  # Board
+  board: !include floor-heating/boards/esp32.yaml
+  # board: !include floor-heating/boards/esp32-s3.yaml
+  # board: !include floor-heating/boards/esp32-c3.yaml
   
   # Core infrastructure
-  core_settings: !include core/settings.yaml
-  logger: !include core/logger.yaml
-  sn74hc595: !include core/sn74hc595.yaml
-  wifi: !include core/wifi.yaml
-  time: !include core/time.yaml
-  switch_others: !include core/switch_others.yaml
-  inputs: !include core/inputs.yaml
-  sensor_adc: !include core/sensor_adc.yaml
-  sensor_others: !include core/sensor_others.yaml
-  onewire: !include core/onewire.yaml
+  core_settings: !include floor-heating/core/settings.yaml
+  logger: !include floor-heating/core/logger.yaml
+  sn74hc595: !include floor-heating/core/sn74hc595.yaml
+  time: !include floor-heating/core/time.yaml
+  switch_others: !include floor-heating/core/switch_others.yaml
+  sensor_adc: !include floor-heating/core/sensor_adc.yaml
+  sensor_others: !include floor-heating/core/sensor_others.yaml
+  onewire: !include floor-heating/core/onewire.yaml
 
   # ============================================
   # MODE: Uncomment for hydraulic balancing
   # ============================================
-  # hydraulic: !include modes/hydraulic.yaml
+  # hydraulic: !include floor-heating/modes/hydraulic.yaml
 
   # ============================================
   # Optional: Pump control via ESP-NOW
   # ============================================
   pump_control: !include
-    file: optional/pump_control.yaml
+    file: floor-heating/optional/pump_control.yaml
     vars:
       pump_mac_address: ${pump_mac_address}
       circulation_check_interval: "24h"
@@ -146,13 +175,22 @@ packages:
   # ============================================
   # Optional: MQTT Ecodan integration
   # ============================================
-  # mqtt_ecodan: !include optional/mqtt_ecodan.yaml
+  # mqtt_ecodan: !include floor-heating/optional/mqtt_ecodan.yaml
 
   # ============================================
-  # ZONES: All use ${control_profile}
+  # ZONES
   # ============================================
+  # Control profile options (use same for all zones):
+  #   floor-heating/zones/tanh.yaml   - Smooth tanh curve control
+  #   floor-heating/zones/linear.yaml - Linear proportional control
+  #   floor-heating/zones/pid.yaml    - PID control with auto-tune
+  #   floor-heating/zones/remote.yaml - External/Home Assistant control
+  
   zone_1: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "1"
       id: wc
@@ -173,7 +211,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_2: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "2"
       id: storage
@@ -194,7 +235,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_3: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "3"
       id: living
@@ -215,7 +259,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_4: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "4"
       id: dining
@@ -236,7 +283,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_5: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "5"
       id: kitchen
@@ -257,7 +307,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_6: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "6"
       id: office
@@ -278,7 +331,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_7: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "7"
       id: bedroom
@@ -299,7 +355,10 @@ packages:
       tanh_steepness: "0.70"
 
   zone_8: !include
-    file: ${control_profile}
+    file: floor-heating/zones/tanh.yaml
+    # file: floor-heating/zones/linear.yaml
+    # file: floor-heating/zones/pid.yaml
+    # file: floor-heating/zones/remote.yaml
     vars:
       zone_number: "8"
       id: bathroom
@@ -328,7 +387,6 @@ packages:
 sensor:
   # ============================================
   # Option 1: Home Assistant sensors (recommended)
-  # Uses existing sensors from Home Assistant
   # ============================================
   - platform: homeassistant
     name: "Corridor Temperature"
@@ -362,84 +420,36 @@ sensor:
 
   # ============================================
   # Option 2: Dallas/OneWire DS18B20 sensors
-  # Requires onewire component (included in core)
-  # Run "esphome logs config.yaml" to get addresses
   # ============================================
   # - platform: dallas_temp
   #   address: 0x1234567890abcdef
   #   name: "Living Room Temperature"
   #   id: living_temp
-  #   resolution: 12
-  #   accuracy_decimals: 1
-  #   filters:
-  #     - offset: 0.0
 
   # ============================================
-  # Option 3: DHT22/DHT11/AM2302 sensors
-  # Direct GPIO connection
+  # Option 3: DHT22/DHT11 sensors
   # ============================================
   # - platform: dht
-  #   model: DHT22  # or DHT11, AM2302
+  #   model: DHT22
   #   pin: GPIO25
   #   temperature:
   #     name: "Living Room Temperature"
   #     id: living_temp
-  #   humidity:
-  #     name: "Living Room Humidity"
-  #   update_interval: 30s
 
   # ============================================
-  # Option 4: BLE Xiaomi sensors (via ESP32 BLE)
-  # Requires esp32_ble_tracker component
+  # Option 4: BLE Xiaomi sensors
   # ============================================
   # esp32_ble_tracker:
-  #
   # - platform: xiaomi_lywsdcgq
   #   mac_address: "58:2D:34:37:F1:10"
   #   temperature:
   #     name: "Living Room Temperature"
   #     id: living_temp
-  #   humidity:
-  #     name: "Living Room Humidity"
-  #   battery_level:
-  #     name: "Living Room Sensor Battery"
 
   # ============================================
-  # Option 5: BLE Xiaomi via Home Assistant
-  # When BLE sensors are in HA via another integration
+  # Option 5: I2C sensors (SHT3x, BME280)
   # ============================================
-  # - platform: homeassistant
-  #   name: "Living Room Temperature"
-  #   entity_id: sensor.ble_xiaomi_living_temperature
-  #   id: living_temp
-
-  # ============================================
-  # Option 6: SHT3x/SHT4x I2C sensors
-  # Requires i2c component
-  # ============================================
-  # i2c:
-  #   sda: GPIO21
-  #   scl: GPIO22
-  #
   # - platform: sht3xd
   #   temperature:
   #     name: "Living Room Temperature"
   #     id: living_temp
-  #   humidity:
-  #     name: "Living Room Humidity"
-  #   address: 0x44
-  #   update_interval: 30s
-
-  # ============================================
-  # Option 7: BME280/BMP280 I2C sensors
-  # ============================================
-  # - platform: bme280_i2c
-  #   temperature:
-  #     name: "Living Room Temperature"
-  #     id: living_temp
-  #   humidity:
-  #     name: "Living Room Humidity"
-  #   pressure:
-  #     name: "Living Room Pressure"
-  #   address: 0x76
-  #   update_interval: 30s
