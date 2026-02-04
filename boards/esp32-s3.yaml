@@ -54,13 +54,15 @@ safe_mode:
 
 
 light:
-  - platform: status_led
+  - platform: esp32_rmt_led_strip
     name: "${name} Status LED"
     id: ${id_prefix}status_led
     icon: "mdi:alarm-light"
-    pin:
-      number: GPIO48
-      inverted: false
+    rgb_order: GRB
+    pin: GPIO48
+    num_leds: 1
+    rmt_channel: 0
+    chipset: ws2812
     restore_mode: ALWAYS_OFF
 
 psram:
