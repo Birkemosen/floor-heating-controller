@@ -162,9 +162,9 @@ packages:
   onewire: !include floor-heating/core/onewire.yaml
 
   # ============================================
-  # MODE: Uncomment for hydraulic balancing
+  # Hydraulic Balancing (comment out to disable)
   # ============================================
-  # hydraulic: !include floor-heating/modes/hydraulic.yaml
+  hydraulic: !include floor-heating/modes/hydraulic.yaml
 
   # ============================================
   # Optional: Pump control via ESP-NOW
