@@ -214,7 +214,7 @@ text_sensor:
     icon: "mdi:cog"
     update_interval: 30s
     lambda: |-
-      bool wifi_connected = WiFi.isConnected();
+      bool wifi_connected = wifi::global_wifi_component->is_connected();
       bool api_connected = api_is_connected();
       if (!wifi_connected) return {"Offline"};
       if (!api_connected) return {"Standalone"};
