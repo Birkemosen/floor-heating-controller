@@ -45,7 +45,7 @@ climate:
       max_temperature: 30 °C
       temperature_step: 0.1 °C
     web_server:
-      sorting_group_id: sorting_group_climate
+      sorting_group_id: sorting_group_zone_${zone_number}
 
 # ============================================
 # Linear Check Script

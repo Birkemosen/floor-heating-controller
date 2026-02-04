@@ -71,21 +71,38 @@ web_server:
   version: 3
   log: true
   sorting_groups:
-    - id: sorting_group_climate
-      name: "Climate"
+    # Zone groups (one per zone)
+    - id: sorting_group_zone_1
+      name: "Zone 1: WC"
       sorting_weight: 10
+    - id: sorting_group_zone_2
+      name: "Zone 2: Storage"
+      sorting_weight: 11
+    - id: sorting_group_zone_3
+      name: "Zone 3: Living Room"
+      sorting_weight: 12
+    - id: sorting_group_zone_4
+      name: "Zone 4: Dining Room"
+      sorting_weight: 13
+    - id: sorting_group_zone_5
+      name: "Zone 5: Kitchen"
+      sorting_weight: 14
+    - id: sorting_group_zone_6
+      name: "Zone 6: Office"
+      sorting_weight: 15
+    - id: sorting_group_zone_7
+      name: "Zone 7: Bedroom"
+      sorting_weight: 16
+    - id: sorting_group_zone_8
+      name: "Zone 8: Bathroom"
+      sorting_weight: 17
+    # System groups
     - id: sorting_group_settings
       name: "Settings"
-      sorting_weight: 20
+      sorting_weight: 80
     - id: sorting_group_status
       name: "Status"
-      sorting_weight: 30
-    - id: sorting_group_zones
-      name: "Zone Parameters"
-      sorting_weight: 40
-    - id: sorting_group_covers
-      name: "Manual Covers"
-      sorting_weight: 50
+      sorting_weight: 81
     - id: sorting_group_debug
       name: "Debug"
       sorting_weight: 90

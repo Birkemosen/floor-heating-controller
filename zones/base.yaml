@@ -50,7 +50,7 @@ number:
     restore_value: true
     initial_value: ${zone_area_default}
     web_server:
-      sorting_group_id: sorting_group_zones
+      sorting_group_id: sorting_group_zone_${zone_number}
     
   - platform: template
     name: "${friendly_name} Max Opening"
@@ -64,7 +64,7 @@ number:
     restore_value: true
     initial_value: ${zone_max_opening_default}
     web_server:
-      sorting_group_id: sorting_group_zones
+      sorting_group_id: sorting_group_zone_${zone_number}
 
   - platform: template
     name: "BEMF Trigger ${zone_number}"
@@ -101,7 +101,7 @@ cover:
       - switch.turn_off: CH${zone_number}_IB_pin
     max_duration: 65s
     web_server:
-      sorting_group_id: sorting_group_covers
+      sorting_group_id: sorting_group_zone_${zone_number}
 
 # ============================================
 # GPIO Switches for Motor Control
@@ -138,7 +138,7 @@ switch:
     turn_on_action:
       - script.execute: TH${zone_number}_check
     web_server:
-      sorting_group_id: sorting_group_debug
+      sorting_group_id: sorting_group_zone_${zone_number}
 
 # ============================================
 # BEMF Sensor (endstop detection)
@@ -185,7 +185,7 @@ sensor:
       if (spacing > 0) return area / spacing;
       return 0;
     web_server:
-      sorting_group_id: sorting_group_zones
+      sorting_group_id: sorting_group_zone_${zone_number}
 
 # ============================================
 # Calibration Script
