@@ -189,7 +189,7 @@ switch:
     
   # Enable pins (directly control motor pairs)
   - platform: gpio
-    name: "Enable Motor 1/2"
+    name: "Enable Motor 1-2"
     id: motor_ena0
     pin:
       number: ${tb6612_ena0_pin}
@@ -197,7 +197,7 @@ switch:
     restore_mode: ALWAYS_OFF
     
   - platform: gpio
-    name: "Enable Motor 3/4"
+    name: "Enable Motor 3-4"
     id: motor_ena1
     pin:
       number: ${tb6612_ena1_pin}
@@ -205,7 +205,7 @@ switch:
     restore_mode: ALWAYS_OFF
     
   - platform: gpio
-    name: "Enable Motor 5/6"
+    name: "Enable Motor 5-6"
     id: motor_ena2
     pin:
       number: ${tb6612_ena2_pin}
@@ -213,7 +213,7 @@ switch:
     restore_mode: ALWAYS_OFF
     
   - platform: gpio
-    name: "Enable Motor 7/8"
+    name: "Enable Motor 7-8"
     id: motor_ena3
     pin:
       number: ${tb6612_ena3_pin}
@@ -229,7 +229,7 @@ sensor:
     name: "Motor Current ADC"
     id: ${id_prefix}motor_current_adc
     pin: ${adc_current_pin}
-    attenuation: 11db
+    attenuation: 12db
     update_interval: 10ms
     accuracy_decimals: 4
     internal: true
@@ -239,7 +239,7 @@ sensor:
     name: "Reference Voltage"
     id: ${id_prefix}ref_voltage_adc
     pin: ${adc_ref_pin}
-    attenuation: 11db
+    attenuation: 12db
     update_interval: 1s
     accuracy_decimals: 4
     internal: true

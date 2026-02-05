@@ -129,15 +129,15 @@ binary_sensor:
             ESP_LOGI("endstop", "CH${zone_number} endstop reached (motor ${motor_number})");
             
             // Update position based on direction
-            auto& cover = id(CH${zone_number}_cover);
-            if (cover.current_operation == COVER_OPERATION_OPENING) {
-              cover.position = 1.0;  // Fully open
+            auto cover = id(CH${zone_number}_cover);
+            if (cover->current_operation == COVER_OPERATION_OPENING) {
+              cover->position = 1.0;  // Fully open
               ESP_LOGI("endstop", "CH${zone_number} fully OPEN");
-            } else if (cover.current_operation == COVER_OPERATION_CLOSING) {
-              cover.position = 0.0;  // Fully closed
+            } else if (cover->current_operation == COVER_OPERATION_CLOSING) {
+              cover->position = 0.0;  // Fully closed
               ESP_LOGI("endstop", "CH${zone_number} fully CLOSED");
             }
-            cover.publish_state();
+            cover->publish_state();
 
 # ============================================
 # Calculated Sensors
