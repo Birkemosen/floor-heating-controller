@@ -300,9 +300,19 @@ binary_sensor:
   - platform: template
     name: "Motor Endstop"
     id: motor_endstop_sensor
-    internal: true
     lambda: |-
       return id(motor_endstop_event);
+    web_server:
+      sorting_group_id: sorting_group_debug
+      
+  # Motor turning indicator
+  - platform: template
+    name: "Motor Turning"
+    id: motor_turning_sensor
+    lambda: |-
+      return id(motor_turning);
+    web_server:
+      sorting_group_id: sorting_group_debug
 
 # ============================================
 # Current Measurement & Endstop Detection
@@ -388,6 +398,51 @@ interval:
             id(motor_current_sum) += filtered;
             id(motor_current_count)++;
           }
+
+# ============================================
+# Test Buttons (for debugging)
+# ============================================
+button:
+  - platform: template
+    name: "Test Motor 1 Open"
+    icon: mdi:arrow-up
+    on_press:
+      - script.execute:
+          id: motor_start
+          motor_num: 1
+          direction: 1
+      - delay: 3s
+      - script.execute:
+          id: motor_stop
+          motor_num: 1
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: sorting_group_debug
+
+  - platform: template
+    name: "Test Motor 1 Close"
+    icon: mdi:arrow-down
+    on_press:
+      - script.execute:
+          id: motor_start
+          motor_num: 1
+          direction: 0
+      - delay: 3s
+      - script.execute:
+          id: motor_stop
+          motor_num: 1
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: sorting_group_debug
+
+  - platform: template
+    name: "Stop All Motors"
+    icon: mdi:stop
+    on_press:
+      - script.execute: motor_stop_all
+    entity_category: diagnostic
+    web_server:
+      sorting_group_id: sorting_group_debug
 
 # ============================================
 # Motor Control Scripts
