@@ -44,7 +44,7 @@ esp32:
       CONFIG_COMPILER_OPTIMIZATION_SIZE: y
 
 preferences:
-  flash_write_interval: 60min
+  flash_write_interval: 0s  # Write to flash immediately on change
   
 
 ota:

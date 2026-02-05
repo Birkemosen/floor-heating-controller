@@ -184,15 +184,38 @@ script:
       - logger.log: "PID CH${zone_number} - control handled by PID component"
 
 # ============================================
-# PID Autotune Button
+# PID Autotune & Save Buttons
 # ============================================
 button:
   - platform: template
     name: "PID ${friendly_name} Autotune"
+    icon: mdi:auto-fix
     on_press:
+      - logger.log: "Starting PID autotune for CH${zone_number} - this may take hours"
       - climate.pid.set_control_parameters:
           id: PID_CH${zone_number}
           kp: 0.0
           ki: 0.0
           kd: 0.0
       - climate.pid.autotune: PID_CH${zone_number}
+
+  - platform: template
+    name: "PID ${friendly_name} Save Values"
+    icon: mdi:content-save
+    on_press:
+      - logger.log: 
+          format: "Saving PID values: Kp=%.4f Ki=%.6f Kd=%.4f"
+          args:
+            - id(PID_CH${zone_number}).get_kp()
+            - id(PID_CH${zone_number}).get_ki()
+            - id(PID_CH${zone_number}).get_kd()
+      - number.set:
+          id: kp_${zone_number}
+          value: !lambda "return id(PID_CH${zone_number}).get_kp();"
+      - number.set:
+          id: ki_${zone_number}
+          value: !lambda "return id(PID_CH${zone_number}).get_ki();"
+      - number.set:
+          id: kd_${zone_number}
+          value: !lambda "return id(PID_CH${zone_number}).get_kd();"
+      - logger.log: "PID values saved to flash"
