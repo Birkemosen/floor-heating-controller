@@ -30,8 +30,8 @@ sensor:
     accuracy_decimals: 2
     update_interval: 60s
     id: ${id_prefix}dallas_input_temp
-    # web_server:
-      # sorting_group_id: sorting_group_sensors
+    web_server:
+      sorting_group_id: sorting_group_status
     
   # ============================================
   # Manifold Return (Output) Temperature Sensor
@@ -47,6 +47,6 @@ sensor:
     accuracy_decimals: 2
     update_interval: 60s
     id: ${id_prefix}dallas_output_temp
-    # web_server:
-      # sorting_group_id: sorting_group_sensors
+    web_server:
+      sorting_group_id: sorting_group_status
     
