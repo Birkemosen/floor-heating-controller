@@ -1,7 +1,6 @@
 # Enable logging
 logger:
-  # level: ERROR #NONE# ERROR #INFO #DEBUG  #VERBOSE
-  level: DEBUG #NONE# ERROR #INFO #DEBUG  #VERBOSE
+  level: INFO  # Use DEBUG for troubleshooting, INFO/WARN for production
   #baud_rate: 0 #to disable logging via UART
   logs:
     adc: NONE
@@ -22,9 +21,9 @@ logger:
     esp32.preferences: NONE
     safe_mode: NONE
     ### custom
-    heat_ctrl_main: DEBUG        # Log level for the heating controller main
-    heat_ctrl_pos: DEBUG        # Log level for the heating controller channel position
-    heat_ctrl_bemf: DEBUG       # Log level for heating controller BEMF
+    heat_ctrl_main: INFO        # Log level for the heating controller main
+    heat_ctrl_pos: INFO         # Log level for the heating controller channel position
+    heat_ctrl_bemf: INFO        # Log level for heating controller BEMF
   # on_message:
       # level: DEBUG
       # then:
