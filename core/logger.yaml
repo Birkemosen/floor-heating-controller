@@ -9,7 +9,7 @@ logger:
     cover: INFO
     switch: INFO
     climate: INFO
-    endstop : DEBUG
+    endstop: INFO
     text_sensor : ERROR
     homeassistant.sensor: ERROR
     gpio : NONE
