@@ -1,21 +1,63 @@
 # Floor Heating Controller
 
-ESPHome firmware for [esp32_8ch_motor_shield](https://github.com/nliaudat/esp32_8ch_motor_shield/)
+ESPHome firmware for custom floor heating controller using ESP32-S3 Super Mini with TB6612FNG motor drivers.
 
 ## Features
 
+- **Hardware**: ESP32-S3 Super Mini + 2x TB6612FNG motor drivers
+- **8 motor channels** with current-based endstop detection
 - **Modular architecture**: Separate files for zones, control profiles, and modes
 - **4 control profiles**: Tanh (recommended), Linear, PID, Remote
 - **2 operating modes**: Standard or Hydraulic Balancing
-- **Configurable zones**: 1-8 zones per controller
 - **Multiple temperature sources**: Home Assistant, Dallas/OneWire, DHT, BLE
+
+## Hardware
+
+### GPIO Pinout (ESP32-S3 Super Mini)
+
+| GPIO | Function | Description |
+|------|----------|-------------|
+| GPIO1 | Mux | HIGH=N1 (odd motors), LOW=N2 (even motors) |
+| GPIO2 | Enable 0 | Motors 1 & 2 (TB6612#1 PWMA) |
+| GPIO3 | Enable 1 | Motors 3 & 4 (TB6612#1 PWMB) |
+| GPIO4 | Enable 2 | Motors 5 & 6 (TB6612#2 PWMA) |
+| GPIO5 | Enable 3 | Motors 7 & 8 (TB6612#2 PWMB) |
+| GPIO6 | Direction | All motors (HIGH=open, LOW=close) |
+| GPIO7 | Standby | Driver enable (LOW=active) |
+| GPIO8 | I2C SDA | I2C Data |
+| GPIO9 | I2C SCL | I2C Clock |
+| GPIO10 | Current ADC | Motor current sensing |
+| GPIO11 | Tacho | Revolution counting |
+| GPIO12 | Ref ADC | Reference voltage |
+| GPIO13 | 1-Wire | Dallas temperature sensors |
+| GPIO43 | UART TX | UART0 Transmit |
+| GPIO44 | UART RX | UART0 Receive |
+| GPIO48 | Status LED | WS2812 RGB LED |
+
+### Motor Mapping
+
+| Motor | Enable Pin | Mux State | Output |
+|-------|------------|-----------|--------|
+| 1 | GPIO2 | HIGH (N1) | TB6612#1 AO1 |
+| 2 | GPIO2 | LOW (N2) | TB6612#1 AO2 |
+| 3 | GPIO3 | HIGH (N1) | TB6612#1 BO2 |
+| 4 | GPIO3 | LOW (N2) | TB6612#1 BO1 |
+| 5 | GPIO4 | HIGH (N1) | TB6612#2 AO1 |
+| 6 | GPIO4 | LOW (N2) | TB6612#2 AO2 |
+| 7 | GPIO5 | HIGH (N1) | TB6612#2 BO2 |
+| 8 | GPIO5 | LOW (N2) | TB6612#2 BO1 |
+
+**Note**: Only ONE motor can run at a time due to the multiplexed design.
 
 ## Folder Structure
 
 ```
 floor-heating-controller/
-├── boards/          # ESP32, ESP32-S3, ESP32-C3
+├── boards/          # ESP32-S3 Super Mini only
 ├── core/            # Core infrastructure
+│   ├── tb6612.yaml  # Motor driver control
+│   ├── settings.yaml
+│   └── ...
 ├── zones/           # Zone templates (base + control combined)
 │   ├── tanh.yaml    # Tanh control (recommended for UFH)
 │   ├── linear.yaml  # Linear control
@@ -26,7 +68,6 @@ floor-heating-controller/
 │   └── hydraulic.yaml
 ├── sensors/         # Sensor templates
 ├── optional/        # Pump control, MQTT integration
-├── devices/         # Device config examples
 └── docs/            # Documentation
 ```
 
@@ -40,15 +81,14 @@ floor-heating-controller/
 
 2. **Setup secrets**:
    ```bash
-   cd floor-heating
-   cp secrets.yaml.example secrets.yaml
+   cp floor-heating/secrets.yaml secrets.yaml
    # Edit secrets.yaml with your WiFi credentials
    ```
 
-3. **Configure** `config.yaml`:
-   - Set `control_profile` (tanh/linear/pid/remote)
-   - Configure zones with your temperature sensors
+3. **Create your config** (copy and modify `config.yaml`):
+   - Set zone names and temperature sensors
    - Set Dallas sensor addresses for supply/return
+   - Adjust motor mapping (`motor_number`) for each zone
 
 4. **Compile & Upload**:
    ```bash
@@ -56,20 +96,6 @@ floor-heating-controller/
    ```
 
 ## Configuration
-
-### Global Settings
-
-```yaml
-substitutions:
-  # Control profile for ALL zones (change here to switch)
-  control_profile: "zones/tanh.yaml"
-  # Options: zones/tanh.yaml, zones/linear.yaml, 
-  #          zones/pid.yaml, zones/remote.yaml
-
-packages:
-  # Enable hydraulic balancing (optional)
-  # hydraulic: !include modes/hydraulic.yaml
-```
 
 ### Control Profiles
 
@@ -80,58 +106,43 @@ packages:
 | `zones/pid.yaml` | PID controller | Precise control |
 | `zones/remote.yaml` | External control | Home Assistant |
 
-### Operating Modes
+### Zone Configuration
 
-| Mode | Description |
-|------|-------------|
-| **Standard** | Temperature control only (default) |
-| **Hydraulic** | + Pipe-length based balancing |
-
-## Multi-Controller Setup
-
-For ESPHome Docker with multiple boards:
-
-```
-/mnt/data/esphome/config/
-├── floor-heating/          # This repo (git clone)
-├── controller-1.yaml       # Device 1 config
-├── controller-2.yaml       # Device 2 config
-└── secrets.yaml            # Shared secrets
+```yaml
+zone_1: !include
+  file: floor-heating/zones/tanh.yaml
+  vars:
+    zone_number: "1"
+    motor_number: "1"          # Physical motor (1-8)
+    id: living
+    friendly_name: "Living Room"
+    temperature_sensor: living_temp
+    current_factor: "1.7"      # Endstop detection sensitivity
+    zone_area_default: "25"
+    zone_max_opening_default: "90"
+    # ... temperature presets ...
 ```
 
-See `devices/` folder for example configurations.
+### Hydraulic Balancing
+
+Enable for pipe-length based flow balancing:
+
+```yaml
+packages:
+  hydraulic: !include floor-heating/modes/hydraulic.yaml
+```
+
+## First Time Upload
+
+1. Connect ESP32-S3 via USB
+2. Press BOOT button for 2-3 seconds before flashing
+3. After OTA update, press EN (reset) button
+4. Future uploads will be wireless (OTA)
 
 ## Documentation
 
 - [Quick Start Guide](docs/QUICK_START.md)
 - [Hydraulic Balancing](docs/HYDRAULIC_BALANCING.md)
-- [Device Configuration](devices/README.md)
-
-## First Time Upload
-
-1. Detach ESP32 board from shield, connect via USB
-2. Press BOOT button for 2-3 seconds before flashing
-3. After OTA update, press EN (reset) button
-4. Future uploads will be wireless (OTA)
-
-## ESP-NOW Pump Control
-
-Add to your pump relay ESP config:
-
-```yaml
-espnow:
-  peers:
-    - "{MAC ADDRESS OF THE FLOOR HEATING CONTROLLER}"
-  auto_add_peer: False
-  on_receive:
-    - lambda: |-
-        std::string received_data((const char*)data, size);
-        if (received_data == "PUMP_ON") {
-          id(relay).turn_on();
-        } else if (received_data == "PUMP_OFF") {
-          id(relay).turn_off();
-        }
-```
 
 ## License
 

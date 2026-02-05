@@ -3,21 +3,34 @@
 # ============================================
 # Complete zone: base infrastructure + tanh control profile.
 # Use this file for all zones when using tanh control.
+#
+# Required vars:
+#   zone_number: "1"
+#   motor_number: "1"             # 1-8 (motor assigned to this zone)
+#   id: "living"
+#   friendly_name: "Living Room"
+#   temperature_sensor: sensor_id
+#   default_preset: "home"
+#   preset_home_temp: "21"
+#   preset_away_temp: "18"
+#   preset_boost_temp: "24"
+#   check_interval: "15min"
+#   tanh_steepness: "1.5"
+#
+# Optional vars:
+#   zone_area_default: "15"
+#   zone_max_opening_default: "90"
 
 packages:
   base: !include
     file: base.yaml
     vars:
       zone_number: ${zone_number}
+      motor_number: ${motor_number}
       id: ${id}
       friendly_name: ${friendly_name}
-      bemf_trigger_initial: ${bemf_trigger_initial}
       zone_area_default: ${zone_area_default}
       zone_max_opening_default: ${zone_max_opening_default}
-      bemf_sensor_adc: ${bemf_sensor_adc}
-      bemf_linked_channel: ${bemf_linked_channel}
-      sn74hc595_IA_pin: ${sn74hc595_IA_pin}
-      sn74hc595_IB_pin: ${sn74hc595_IB_pin}
 
   control: !include
     file: ../control/tanh.yaml
@@ -32,4 +45,3 @@ packages:
       preset_boost_temp: ${preset_boost_temp}
       check_interval: ${check_interval}
       tanh_steepness: ${tanh_steepness}
-      bemf_linked_channel: ${bemf_linked_channel}

@@ -3,7 +3,6 @@
 # ============================================
 # Common components for all control profiles.
 # Uses TB6612FNG motor driver with current-based endstop detection.
-# Inspired by VdMot Controller (Lenti84).
 #
 # Required vars:
 #   zone_number: "1"             # 1-8
@@ -32,10 +31,22 @@ globals:
     type: float
     initial_value: '0.0'
 
-  # Motor operation tracking for this zone
-  - id: zone_${zone_number}_motor_running
+  # Motor operation tracking
+  - id: motor_${motor_number}_running
     type: bool
     initial_value: 'false'
+    
+  - id: motor_${motor_number}_target_position
+    type: float
+    initial_value: '0.0'
+    
+  - id: motor_${motor_number}_current_samples
+    type: int
+    initial_value: '0'
+    
+  - id: motor_${motor_number}_current_sum
+    type: float
+    initial_value: '0.0'
 
 # ============================================
 # Zone Parameters
@@ -69,31 +80,45 @@ number:
     web_server:
       sorting_group_id: sorting_group_zone_${zone_number}
 
+  - platform: template
+    name: "Current Factor ${zone_number}"
+    id: current_factor_${zone_number}
+    icon: "mdi:current-ac"
+    optimistic: true
+    min_value: 1.2
+    max_value: 3.0
+    step: 0.1
+    restore_value: true
+    initial_value: ${current_factor}
+    web_server:
+      sorting_group_id: sorting_group_debug
+
 # ============================================
-# Valve Cover (endstop-based, VdMot style)
+# Valve Cover (time + current-based endstop)
 # ============================================
 cover:
-  - platform: endstop
+  - platform: time_based
     name: "CH${zone_number}"
     device_class: shutter
     id: CH${zone_number}_cover
     
     open_action:
-      - script.execute: motor_zone_${zone_number}_open
+      - script.execute:
+          id: motor_zone_${zone_number}_open
           
     open_duration: 60s
-    open_endstop: endstop_${zone_number}_sensor
     
     close_action:
-      - script.execute: motor_zone_${zone_number}_close
+      - script.execute:
+          id: motor_zone_${zone_number}_close
           
     close_duration: 60s
-    close_endstop: endstop_${zone_number}_sensor
     
     stop_action:
-      - script.execute: motor_zone_${zone_number}_stop
-      
-    max_duration: 65s
+      - script.execute:
+          id: motor_zone_${zone_number}_stop
+          
+    assumed_state: true
     web_server:
       sorting_group_id: sorting_group_zone_${zone_number}
 
@@ -109,7 +134,7 @@ switch:
       sorting_group_id: sorting_group_zone_${zone_number}
 
 # ============================================
-# Endstop Sensor (uses global motor_endstop_event)
+# Current-based Endstop Detection
 # ============================================
 binary_sensor:
   - platform: template
@@ -117,27 +142,68 @@ binary_sensor:
     name: "Endstop CH${zone_number}"
     internal: true
     lambda: |-
-      // Only trigger when THIS zone's motor is running
-      if (!id(zone_${zone_number}_motor_running)) {
+      // Only check when this motor is running
+      if (!id(motor_${motor_number}_running)) {
         return false;
       }
-      // Check global endstop event from tb6612.yaml
-      return id(motor_endstop_event);
+      
+      // Get current reading
+      float current = id(${id_prefix}motor_current_ma).state;
+      
+      // Get mean current for this motor
+      float mean_current = id(motor_mean_current_${motor_number});
+      float threshold_factor = id(current_factor_${zone_number}).state;
+      
+      // Detect overcurrent (endstop reached)
+      float high_threshold = mean_current * threshold_factor;
+      if (current > high_threshold || current > id(${id_prefix}current_threshold_high).state) {
+        ESP_LOGD("endstop", "CH${zone_number} overcurrent: %.1f mA (threshold: %.1f mA)", 
+                 current, high_threshold);
+        return true;
+      }
+      
+      return false;
     on_press:
       then:
         - lambda: |-
-            ESP_LOGI("endstop", "CH${zone_number} endstop reached (motor ${motor_number})");
+            ESP_LOGI("endstop", "CH${zone_number} endstop reached");
             
-            // Update position based on direction
-            auto& cover = id(CH${zone_number}_cover);
+            // Determine if opening or closing
+            auto cover = id(CH${zone_number}_cover);
             if (cover.current_operation == COVER_OPERATION_OPENING) {
               cover.position = 1.0;  // Fully open
-              ESP_LOGI("endstop", "CH${zone_number} fully OPEN");
             } else if (cover.current_operation == COVER_OPERATION_CLOSING) {
               cover.position = 0.0;  // Fully closed
-              ESP_LOGI("endstop", "CH${zone_number} fully CLOSED");
             }
             cover.publish_state();
+            
+        - script.execute:
+            id: motor_zone_${zone_number}_stop
+
+# ============================================
+# Undercurrent Detection (no motor connected)
+# ============================================
+interval:
+  - interval: 200ms
+    then:
+      - lambda: |-
+          // Only check when motor is running and has been running for a bit
+          if (!id(motor_${motor_number}_running)) {
+            return;
+          }
+          
+          float current = id(${id_prefix}motor_current_ma).state;
+          float low_threshold = id(${id_prefix}current_threshold_low).state;
+          
+          // Collect samples for mean current calculation
+          id(motor_${motor_number}_current_sum) += current;
+          id(motor_${motor_number}_current_samples)++;
+          
+          // Check for undercurrent (no motor connected)
+          if (id(motor_${motor_number}_current_samples) > 10 && current < low_threshold) {
+            ESP_LOGW("endstop", "CH${zone_number} undercurrent: %.1f mA (no motor?)", current);
+            // Could stop motor here if needed
+          }
 
 # ============================================
 # Calculated Sensors
@@ -167,11 +233,13 @@ script:
     then:
       - lambda: |-
           if (id(motor_mutex)) {
-            ESP_LOGW("motor", "Cannot open CH${zone_number}: motor %d is running", id(current_motor));
+            ESP_LOGW("motor", "Cannot open CH${zone_number}: another motor is running");
             return;
           }
           ESP_LOGI("motor", "CH${zone_number} opening (motor ${motor_number})");
-          id(zone_${zone_number}_motor_running) = true;
+          id(motor_${motor_number}_running) = true;
+          id(motor_${motor_number}_current_samples) = 0;
+          id(motor_${motor_number}_current_sum) = 0.0;
       - script.execute:
           id: motor_start
           motor_num: ${motor_number}
@@ -182,11 +250,13 @@ script:
     then:
       - lambda: |-
           if (id(motor_mutex)) {
-            ESP_LOGW("motor", "Cannot close CH${zone_number}: motor %d is running", id(current_motor));
+            ESP_LOGW("motor", "Cannot close CH${zone_number}: another motor is running");
             return;
           }
           ESP_LOGI("motor", "CH${zone_number} closing (motor ${motor_number})");
-          id(zone_${zone_number}_motor_running) = true;
+          id(motor_${motor_number}_running) = true;
+          id(motor_${motor_number}_current_samples) = 0;
+          id(motor_${motor_number}_current_sum) = 0.0;
       - script.execute:
           id: motor_start
           motor_num: ${motor_number}
@@ -197,45 +267,46 @@ script:
     then:
       - lambda: |-
           ESP_LOGI("motor", "CH${zone_number} stopping (motor ${motor_number})");
-          id(zone_${zone_number}_motor_running) = false;
+          
+          // Update mean current if we have samples
+          if (id(motor_${motor_number}_current_samples) > 20) {
+            float new_mean = id(motor_${motor_number}_current_sum) / 
+                            id(motor_${motor_number}_current_samples);
+            // Blend with existing mean (80% old, 20% new)
+            float old_mean = id(motor_mean_current_${motor_number});
+            id(motor_mean_current_${motor_number}) = old_mean * 0.8 + new_mean * 0.2;
+            ESP_LOGD("motor", "CH${zone_number} mean current updated: %.1f mA", 
+                     id(motor_mean_current_${motor_number}));
+          }
+          
+          id(motor_${motor_number}_running) = false;
       - script.execute:
           id: motor_stop
           motor_num: ${motor_number}
 
-  # Calibration script (learn valve range)
+  # Calibration script
   - id: calibrate_CH${zone_number}_cover
     then:
       - logger.log:
-          format: "Calibrate CH${zone_number} (${friendly_name}) - close"
-          tag: motor
+          format: "Calibrate CH${zone_number} (${friendly_name})"
+          tag: heat_ctrl_main
       - cover.close: CH${zone_number}_cover
       - wait_until:
           condition:
-            lambda: 'return !id(zone_${zone_number}_motor_running);'
+            lambda: 'return !id(motor_${motor_number}_running);'
           timeout: 70s
       - delay: 2s
-      
-      - logger.log:
-          format: "Calibrate CH${zone_number} - open"
-          tag: motor
       - cover.open: CH${zone_number}_cover
       - wait_until:
           condition:
-            lambda: 'return !id(zone_${zone_number}_motor_running);'
+            lambda: 'return !id(motor_${motor_number}_running);'
           timeout: 70s
       - delay: 2s
-      
-      - logger.log:
-          format: "Calibrate CH${zone_number} - close (final)"
-          tag: motor
       - cover.close: CH${zone_number}_cover
       - wait_until:
           condition:
-            lambda: 'return !id(zone_${zone_number}_motor_running);'
+            lambda: 'return !id(motor_${motor_number}_running);'
           timeout: 70s
-          
       - logger.log:
-          format: "Calibrate CH${zone_number} complete - mean current: %.1f mA"
-          tag: motor
-          args:
-            - id(motor_mean_current_${motor_number})
+          format: "Calibrate CH${zone_number} complete"
+          tag: heat_ctrl_main

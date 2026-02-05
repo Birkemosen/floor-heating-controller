@@ -4,10 +4,9 @@
 # Non-linear control using hyperbolic tangent.
 # Good for underfloor heating's slow thermal response.
 #
-# Required vars (same as zones/base.yaml):
+# Required vars:
 #   zone_number, id, friendly_name, temperature_sensor
 #   default_preset, preset_home_temp, preset_away_temp, preset_boost_temp
-#   bemf_linked_channel
 #
 # Optional vars:
 #   check_interval: "15min"
@@ -67,9 +66,9 @@ script:
               return;
           }
           
-          // Check if linked channel is busy
-          if (id(CH${bemf_linked_channel}_cover).current_operation != COVER_OPERATION_IDLE) {
-              ESP_LOGD("tanh", "CH${zone_number} skipped - CH${bemf_linked_channel} busy");
+          // Check if another motor is running (multiplexed design)
+          if (id(motor_mutex)) {
+              ESP_LOGD("tanh", "CH${zone_number} skipped - motor busy");
               return;
           }
           

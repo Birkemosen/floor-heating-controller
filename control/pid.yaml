@@ -4,9 +4,8 @@
 # Precise control using ESPHome's PID component.
 # Requires tuning (Kp, Ki, Kd) - has autotune button.
 #
-# Required vars (same as zones/base.yaml):
+# Required vars:
 #   zone_number, id, friendly_name, temperature_sensor
-#   bemf_linked_channel
 #
 # PID-specific vars:
 #   target_temp_default: "21"
@@ -109,9 +108,9 @@ output:
     max_power: 0.998
     write_action:
       - lambda: |-
-          // Check if linked channel is busy
-          if (id(CH${bemf_linked_channel}_cover).current_operation != COVER_OPERATION_IDLE) {
-              ESP_LOGD("pid", "CH${zone_number} skipped - CH${bemf_linked_channel} busy");
+          // Check if another motor is running (multiplexed design)
+          if (id(motor_mutex)) {
+              ESP_LOGD("pid", "CH${zone_number} skipped - motor busy");
               return;
           }
           

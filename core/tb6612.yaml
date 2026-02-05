@@ -1,0 +1,554 @@
+# ============================================
+# TB6612FNG Dual H-Bridge Motor Driver
+# ============================================
+# Multiplexed motor control for 8 motors using 2x TB6612FNG
+# with GAQY212GSX optocouplers for negative rail switching.
+#
+# Current sensing inspired by VdMot Controller (Lenti84):
+# https://github.com/Lenti84/VdMot_Controller
+#
+# IMPORTANT: Only ONE motor can run at a time due to the
+# multiplexed design (odd vs even motors share negative rails).
+#
+# Motor mapping:
+#   Motor 1: Enable0, Mux=HIGH (odd)
+#   Motor 2: Enable0, Mux=LOW  (even)
+#   Motor 3: Enable1, Mux=HIGH (odd)
+#   Motor 4: Enable1, Mux=LOW  (even)
+#   Motor 5: Enable2, Mux=HIGH (odd)
+#   Motor 6: Enable2, Mux=LOW  (even)
+#   Motor 7: Enable3, Mux=HIGH (odd)
+#   Motor 8: Enable3, Mux=LOW  (even)
+
+# ============================================
+# Motor Control Globals
+# ============================================
+globals:
+  - id: motor_mutex
+    type: bool
+    initial_value: 'false'
+    
+  - id: current_motor
+    type: int
+    initial_value: '0'
+    
+  - id: motor_direction
+    type: int
+    initial_value: '0'  # 0=close, 1=open
+    
+  - id: motor_turning
+    type: bool
+    initial_value: 'false'
+    
+  - id: motor_debounce_count
+    type: int
+    initial_value: '0'
+    
+  # Current measurement (filtered)
+  - id: motor_current_raw
+    type: float
+    initial_value: '0.0'
+    
+  - id: motor_current_filtered
+    type: float
+    initial_value: '0.0'
+    
+  # Mean current accumulator for learning
+  - id: motor_current_sum
+    type: float
+    initial_value: '0.0'
+    
+  - id: motor_current_count
+    type: int
+    initial_value: '0'
+    
+  # Mean current for endstop detection (per motor, in mA)
+  # These are learned during operation
+  - id: motor_mean_current_1
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_2
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_3
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_4
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_5
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_6
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_7
+    type: float
+    initial_value: '20.0'
+  - id: motor_mean_current_8
+    type: float
+    initial_value: '20.0'
+    
+  # Endstop event flag
+  - id: motor_endstop_event
+    type: bool
+    initial_value: 'false'
+
+# ============================================
+# Control Parameters (VdMot-style)
+# ============================================
+number:
+  - platform: template
+    name: "Current Factor Low"
+    id: ${id_prefix}current_factor_low
+    icon: "mdi:current-ac"
+    optimistic: true
+    min_value: 1.0
+    max_value: 4.0
+    step: 0.1
+    restore_value: true
+    initial_value: 1.7
+    web_server:
+      sorting_group_id: sorting_group_settings
+      
+  - platform: template
+    name: "Current Factor High"
+    id: ${id_prefix}current_factor_high
+    icon: "mdi:current-ac"
+    optimistic: true
+    min_value: 1.0
+    max_value: 4.0
+    step: 0.1
+    restore_value: true
+    initial_value: 1.7
+    web_server:
+      sorting_group_id: sorting_group_settings
+      
+  - platform: template
+    name: "Undercurrent Threshold"
+    id: ${id_prefix}undercurrent_threshold
+    icon: "mdi:current-ac"
+    unit_of_measurement: "mA"
+    optimistic: true
+    min_value: 1
+    max_value: 20
+    step: 1
+    restore_value: true
+    initial_value: 2
+    web_server:
+      sorting_group_id: sorting_group_settings
+
+  # Current sensing gain (mA per Volt difference)
+  # VdMot uses: SHUNT_RES=3.9ohm, OPGAIN=1.5x → ~138 µA/digit
+  # Adjust based on your shunt resistor and op-amp gain
+  - platform: template
+    name: "Current Gain"
+    id: ${id_prefix}current_gain
+    icon: "mdi:tune"
+    unit_of_measurement: "mA/V"
+    optimistic: true
+    min_value: 10
+    max_value: 500
+    step: 1
+    restore_value: true
+    initial_value: 138
+    web_server:
+      sorting_group_id: sorting_group_debug
+
+# ============================================
+# GPIO Control Switches
+# ============================================
+switch:
+  # Standby control (active LOW)
+  - platform: gpio
+    name: "Motor Standby"
+    id: motor_standby
+    pin:
+      number: ${tb6612_stby_pin}
+      inverted: true  # LOW = active, so invert for logical HIGH = active
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  # Direction control
+  - platform: gpio
+    name: "Motor Direction"
+    id: motor_dir
+    pin:
+      number: ${tb6612_dir_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  # Mux control (HIGH = N1/odd motors, LOW = N2/even motors)
+  - platform: gpio
+    name: "Motor Mux"
+    id: motor_mux
+    pin:
+      number: ${tb6612_mux_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  # Enable pins (directly control motor pairs)
+  - platform: gpio
+    name: "Enable Motor 1/2"
+    id: motor_ena0
+    pin:
+      number: ${tb6612_ena0_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  - platform: gpio
+    name: "Enable Motor 3/4"
+    id: motor_ena1
+    pin:
+      number: ${tb6612_ena1_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  - platform: gpio
+    name: "Enable Motor 5/6"
+    id: motor_ena2
+    pin:
+      number: ${tb6612_ena2_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+    
+  - platform: gpio
+    name: "Enable Motor 7/8"
+    id: motor_ena3
+    pin:
+      number: ${tb6612_ena3_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+# ============================================
+# ADC Sensors for Current Sensing (VdMot-style)
+# ============================================
+sensor:
+  # Raw current ADC (fast update for endstop detection)
+  - platform: adc
+    name: "Motor Current ADC"
+    id: ${id_prefix}motor_current_adc
+    pin: ${adc_current_pin}
+    attenuation: 11db
+    update_interval: 10ms
+    accuracy_decimals: 4
+    internal: true
+    
+  # Reference voltage (half of VCC, slow update)
+  - platform: adc
+    name: "Reference Voltage"
+    id: ${id_prefix}ref_voltage_adc
+    pin: ${adc_ref_pin}
+    attenuation: 11db
+    update_interval: 1s
+    accuracy_decimals: 4
+    internal: true
+
+  # Calculated current in mA (for display)
+  - platform: template
+    name: "Motor Current"
+    id: ${id_prefix}motor_current_ma
+    icon: "mdi:current-ac"
+    unit_of_measurement: "mA"
+    accuracy_decimals: 1
+    update_interval: 100ms
+    lambda: |-
+      return id(motor_current_filtered);
+    web_server:
+      sorting_group_id: sorting_group_debug
+      
+  # Mean current of currently running motor (for display)
+  - platform: template
+    name: "Motor Mean Current"
+    id: ${id_prefix}motor_mean_current
+    icon: "mdi:current-ac"
+    unit_of_measurement: "mA"
+    accuracy_decimals: 1
+    update_interval: 1s
+    lambda: |-
+      int motor = id(current_motor);
+      if (motor == 0) return 0;
+      switch(motor) {
+        case 1: return id(motor_mean_current_1);
+        case 2: return id(motor_mean_current_2);
+        case 3: return id(motor_mean_current_3);
+        case 4: return id(motor_mean_current_4);
+        case 5: return id(motor_mean_current_5);
+        case 6: return id(motor_mean_current_6);
+        case 7: return id(motor_mean_current_7);
+        case 8: return id(motor_mean_current_8);
+        default: return 0;
+      }
+    web_server:
+      sorting_group_id: sorting_group_debug
+
+# ============================================
+# Tacho Input (for revolution counting)
+# ============================================
+binary_sensor:
+  - platform: gpio
+    name: "Motor Tacho"
+    id: motor_tacho
+    pin:
+      number: ${tacho_pin}
+      mode: INPUT_PULLUP
+    internal: true
+    filters:
+      - delayed_on: 1ms
+      
+  # Global endstop sensor (triggered by overcurrent)
+  - platform: template
+    name: "Motor Endstop"
+    id: motor_endstop_sensor
+    internal: true
+    lambda: |-
+      return id(motor_endstop_event);
+
+# ============================================
+# Current Measurement & Endstop Detection
+# ============================================
+# This interval runs at 10ms (100Hz) like VdMot's timer
+interval:
+  - interval: 10ms
+    then:
+      - lambda: |-
+          // Only process when motor is turning
+          if (!id(motor_turning)) {
+            id(motor_current_filtered) = 0;
+            id(motor_debounce_count) = 0;
+            return;
+          }
+          
+          // Read ADC values
+          float adc_current = id(${id_prefix}motor_current_adc).state;
+          float adc_ref = id(${id_prefix}ref_voltage_adc).state;
+          float gain = id(${id_prefix}current_gain).state;
+          
+          // Calculate current in mA (differential measurement like VdMot)
+          // current = (ADC_CURRENT - ADC_REF) * GAIN
+          float raw_current = (adc_current - adc_ref) * gain;
+          id(motor_current_raw) = raw_current;
+          
+          // Filter: IIR low-pass (98% old + 2% new, like VdMot)
+          float filtered = id(motor_current_filtered) * 0.98 + abs(raw_current) * 0.02;
+          id(motor_current_filtered) = filtered;
+          
+          // Debounce counter (ignore motor inrush current)
+          if (id(motor_debounce_count) < 255) {
+            id(motor_debounce_count)++;
+          }
+          
+          // Only check after debounce period (~250ms at 10ms interval)
+          if (id(motor_debounce_count) < 25) {
+            return;
+          }
+          
+          // Get mean current for this motor
+          int motor = id(current_motor);
+          float mean_current = 20.0;  // default
+          switch(motor) {
+            case 1: mean_current = id(motor_mean_current_1); break;
+            case 2: mean_current = id(motor_mean_current_2); break;
+            case 3: mean_current = id(motor_mean_current_3); break;
+            case 4: mean_current = id(motor_mean_current_4); break;
+            case 5: mean_current = id(motor_mean_current_5); break;
+            case 6: mean_current = id(motor_mean_current_6); break;
+            case 7: mean_current = id(motor_mean_current_7); break;
+            case 8: mean_current = id(motor_mean_current_8); break;
+          }
+          
+          // Calculate thresholds (VdMot style)
+          float factor_high = id(${id_prefix}current_factor_high).state;
+          float factor_low = id(${id_prefix}current_factor_low).state;
+          float threshold_high = mean_current * factor_high;
+          float threshold_low = -mean_current * factor_low;
+          float undercurrent = id(${id_prefix}undercurrent_threshold).state;
+          
+          // Overcurrent detection (endstop reached)
+          // Safety limit at 100mA absolute
+          if (filtered > threshold_high || filtered > 100.0 ||
+              raw_current > threshold_high || raw_current < threshold_low) {
+            ESP_LOGI("motor", "Endstop: current=%.1f mA (threshold=%.1f)", filtered, threshold_high);
+            id(motor_endstop_event) = true;
+          }
+          
+          // Undercurrent detection (no motor connected)
+          else if (filtered < undercurrent && filtered > -undercurrent) {
+            static int undercurrent_count = 0;
+            undercurrent_count++;
+            if (undercurrent_count > 50) {  // 500ms of undercurrent
+              ESP_LOGW("motor", "Undercurrent: no motor connected?");
+              undercurrent_count = 0;
+              // Could trigger endstop here too if needed
+            }
+          }
+          
+          // Normal operation: accumulate for mean current calculation
+          else {
+            id(motor_current_sum) += filtered;
+            id(motor_current_count)++;
+          }
+
+# ============================================
+# Motor Control Scripts
+# ============================================
+script:
+  # Stop all motors immediately
+  - id: motor_stop_all
+    then:
+      - switch.turn_off: motor_ena0
+      - switch.turn_off: motor_ena1
+      - switch.turn_off: motor_ena2
+      - switch.turn_off: motor_ena3
+      - switch.turn_off: motor_standby
+      - globals.set:
+          id: motor_turning
+          value: 'false'
+      - globals.set:
+          id: motor_mutex
+          value: 'false'
+      - globals.set:
+          id: current_motor
+          value: '0'
+      - globals.set:
+          id: motor_endstop_event
+          value: 'false'
+      - logger.log:
+          format: "All motors stopped"
+          level: INFO
+          tag: motor
+
+  # Start motor with specified number and direction
+  - id: motor_start
+    parameters:
+      motor_num: int
+      direction: int
+    then:
+      - lambda: |-
+          // Check if another motor is running
+          if (id(motor_mutex)) {
+            ESP_LOGW("motor", "Motor %d already running, cannot start motor %d", 
+                     id(current_motor), motor_num);
+            return;
+          }
+          
+          // Set mutex and state
+          id(motor_mutex) = true;
+          id(current_motor) = motor_num;
+          id(motor_direction) = direction;
+          id(motor_endstop_event) = false;
+          id(motor_debounce_count) = 0;
+          id(motor_current_sum) = 0;
+          id(motor_current_count) = 0;
+          
+          ESP_LOGI("motor", "Starting motor %d, direction=%s", 
+                   motor_num, direction ? "OPEN" : "CLOSE");
+                   
+      # Enable standby (active)
+      - switch.turn_on: motor_standby
+      - delay: 10ms
+      
+      # Set mux based on odd/even motor
+      - lambda: |-
+          bool is_odd = (id(current_motor) % 2) == 1;
+          if (is_odd) {
+            id(motor_mux).turn_on();  // HIGH for odd motors (N1)
+          } else {
+            id(motor_mux).turn_off(); // LOW for even motors (N2)
+          }
+      - delay: 50ms  # Wait for relay/optocoupler settling
+      
+      # Set direction
+      - lambda: |-
+          if (id(motor_direction) == 1) {
+            id(motor_dir).turn_on();  // Open
+          } else {
+            id(motor_dir).turn_off(); // Close
+          }
+      - delay: 5ms
+      
+      # Mark as turning (enables current measurement)
+      - globals.set:
+          id: motor_turning
+          value: 'true'
+      
+      # Enable the correct motor pair
+      - lambda: |-
+          int motor = id(current_motor);
+          if (motor == 1 || motor == 2) {
+            id(motor_ena0).turn_on();
+          } else if (motor == 3 || motor == 4) {
+            id(motor_ena1).turn_on();
+          } else if (motor == 5 || motor == 6) {
+            id(motor_ena2).turn_on();
+          } else if (motor == 7 || motor == 8) {
+            id(motor_ena3).turn_on();
+          }
+
+  # Stop specific motor and update mean current
+  - id: motor_stop
+    parameters:
+      motor_num: int
+    then:
+      - lambda: |-
+          if (id(current_motor) != motor_num && id(motor_mutex)) {
+            ESP_LOGW("motor", "Motor %d not running (current=%d)", 
+                     motor_num, id(current_motor));
+            return;
+          }
+          
+          // Update mean current if we have enough samples
+          if (id(motor_current_count) > 20) {
+            float new_mean = id(motor_current_sum) / id(motor_current_count);
+            // Blend with existing mean (80% old, 20% new)
+            float* mean_ptr = nullptr;
+            switch(motor_num) {
+              case 1: mean_ptr = &id(motor_mean_current_1); break;
+              case 2: mean_ptr = &id(motor_mean_current_2); break;
+              case 3: mean_ptr = &id(motor_mean_current_3); break;
+              case 4: mean_ptr = &id(motor_mean_current_4); break;
+              case 5: mean_ptr = &id(motor_mean_current_5); break;
+              case 6: mean_ptr = &id(motor_mean_current_6); break;
+              case 7: mean_ptr = &id(motor_mean_current_7); break;
+              case 8: mean_ptr = &id(motor_mean_current_8); break;
+            }
+            if (mean_ptr != nullptr && new_mean > 5.0) {  // Only update if reasonable
+              *mean_ptr = (*mean_ptr) * 0.8 + new_mean * 0.2;
+              ESP_LOGI("motor", "Motor %d mean current updated: %.1f mA", motor_num, *mean_ptr);
+            }
+          }
+          
+          ESP_LOGI("motor", "Stopping motor %d", motor_num);
+          
+      # Stop turning flag first
+      - globals.set:
+          id: motor_turning
+          value: 'false'
+          
+      # Disable the motor enable pin
+      - lambda: |-
+          int motor = motor_num;
+          if (motor == 1 || motor == 2) {
+            id(motor_ena0).turn_off();
+          } else if (motor == 3 || motor == 4) {
+            id(motor_ena1).turn_off();
+          } else if (motor == 5 || motor == 6) {
+            id(motor_ena2).turn_off();
+          } else if (motor == 7 || motor == 8) {
+            id(motor_ena3).turn_off();
+          }
+          
+      # Small delay then disable standby
+      - delay: 50ms
+      - switch.turn_off: motor_standby
+      
+      # Clear state
+      - globals.set:
+          id: motor_mutex
+          value: 'false'
+      - globals.set:
+          id: current_motor
+          value: '0'
+      - globals.set:
+          id: motor_endstop_event
+          value: 'false'
