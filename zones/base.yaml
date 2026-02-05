@@ -205,6 +205,7 @@ script:
   # Calibration script (learn valve range)
   - id: calibrate_CH${zone_number}_cover
     then:
+      - script.execute: led_status_calibrating  # Purple LED
       - logger.log:
           format: "Calibrate CH${zone_number} (${friendly_name}) - close"
           tag: motor
@@ -239,3 +240,4 @@ script:
           tag: motor
           args:
             - id(motor_mean_current_${motor_number})
+      - script.execute: led_update_status  # Return to normal status

@@ -405,9 +405,9 @@ interval:
             static int undercurrent_count = 0;
             undercurrent_count++;
             if (undercurrent_count > 50) {  // 500ms of undercurrent
-              ESP_LOGW("motor", "Undercurrent: no motor connected?");
+              ESP_LOGW("motor", "Undercurrent: no motor connected? (Motor %d)", motor);
               undercurrent_count = 0;
-              // Could trigger endstop here too if needed
+              id(motor_endstop_event) = true;  // Treat as endstop to stop motor
             }
           }
           
@@ -486,6 +486,7 @@ script:
       - globals.set:
           id: motor_endstop_event
           value: 'false'
+      - script.execute: led_update_status  # Update LED
       - logger.log:
           format: "All motors stopped"
           level: INFO
@@ -544,6 +545,7 @@ script:
       - globals.set:
           id: motor_turning
           value: 'true'
+      - script.execute: led_status_motor  # Cyan LED for motor running
       
       # Enable the correct motor pair
       - lambda: |-

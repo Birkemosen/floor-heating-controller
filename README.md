@@ -32,7 +32,7 @@ ESPHome firmware for custom floor heating controller using ESP32-S3 Super Mini w
 | GPIO13 | 1-Wire | Dallas temperature sensors |
 | GPIO43 | UART TX | UART0 Transmit |
 | GPIO44 | UART RX | UART0 Receive |
-| GPIO48 | Status LED | WS2812 RGB LED |
+| GPIO48 | Status LED | Standard LED + WS2812 RGB |
 
 ### Motor Mapping
 
@@ -48,6 +48,21 @@ ESPHome firmware for custom floor heating controller using ESP32-S3 Super Mini w
 | 8 | GPIO5 | LOW (N2) | TB6612#2 BO1 |
 
 **Note**: Only ONE motor can run at a time due to the multiplexed design.
+
+### Status LED Color Codes (WS2812)
+
+| Color | Effect | Status |
+|-------|--------|--------|
+| 🟢 Green | Solid | Normal, connected to Home Assistant |
+| 🟢 Green | Breathing | Normal, standalone mode |
+| 🔵 Blue | Flashing | Booting / WiFi connecting |
+| 🔵 Cyan | Solid | Motor running |
+| 🟡 Yellow | Solid | Warning (sensor offline) |
+| 🟠 Orange | Flashing | No 1-Wire sensors found |
+| 🔴 Red | Solid | Error (API disconnected, standalone OFF) |
+| 🔴 Red | Flashing | Critical error (motor stall) |
+| 🟣 Purple | Solid | Calibration in progress |
+| ⚪ White | Flash | Command received |
 
 ## Folder Structure
 
