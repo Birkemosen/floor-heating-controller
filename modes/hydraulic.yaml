@@ -41,6 +41,7 @@ number:
     step: 1
     restore_value: true
     initial_value: 5
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_settings
     
@@ -55,6 +56,7 @@ number:
     step: 1
     restore_value: true
     initial_value: 3
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_settings
 
@@ -76,6 +78,7 @@ sensor:
     icon: "mdi:target"
     accuracy_decimals: 0
     update_interval: 30s
+    entity_category: diagnostic
     lambda: |-
       return id(${id_prefix}reference_zone);
     web_server:
@@ -87,6 +90,7 @@ text_sensor:
     id: ${id_prefix}balancing_status
     icon: "mdi:information-outline"
     update_interval: 30s
+    entity_category: diagnostic
     lambda: |-
       if (!id(${id_prefix}balancing_enabled).state) {
         return {"Disabled"};

@@ -108,6 +108,7 @@ number:
     step: 0.1
     restore_value: true
     initial_value: 1.7
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_settings
       
@@ -121,6 +122,7 @@ number:
     step: 0.1
     restore_value: true
     initial_value: 1.7
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_settings
       
@@ -135,6 +137,7 @@ number:
     step: 1
     restore_value: true
     initial_value: 2
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_settings
 
@@ -152,6 +155,7 @@ number:
     step: 1
     restore_value: true
     initial_value: 138
+    entity_category: config
     web_server:
       sorting_group_id: sorting_group_debug
 
@@ -234,6 +238,7 @@ sensor:
     accuracy_decimals: 3
     unit_of_measurement: "V"
     icon: "mdi:flash"
+    entity_category: diagnostic
     web_server:
       sorting_group_id: sorting_group_debug
     
@@ -247,6 +252,7 @@ sensor:
     accuracy_decimals: 3
     unit_of_measurement: "V"
     icon: "mdi:sine-wave"
+    entity_category: diagnostic
     web_server:
       sorting_group_id: sorting_group_debug
 
@@ -258,6 +264,7 @@ sensor:
     unit_of_measurement: "mA"
     accuracy_decimals: 1
     update_interval: 100ms
+    entity_category: diagnostic
     lambda: |-
       return id(motor_current_filtered);
     web_server:
@@ -271,6 +278,7 @@ sensor:
     unit_of_measurement: "mA"
     accuracy_decimals: 1
     update_interval: 1s
+    entity_category: diagnostic
     lambda: |-
       int motor = id(current_motor);
       if (motor == 0) return 0;
@@ -306,6 +314,8 @@ binary_sensor:
   - platform: template
     name: "Motor Endstop"
     id: motor_endstop_sensor
+    icon: "mdi:stop-circle"
+    entity_category: diagnostic
     lambda: |-
       return id(motor_endstop_event);
     web_server:
@@ -315,6 +325,8 @@ binary_sensor:
   - platform: template
     name: "Motor Turning"
     id: motor_turning_sensor
+    icon: "mdi:rotate-3d-variant"
+    entity_category: diagnostic
     lambda: |-
       return id(motor_turning);
     web_server:

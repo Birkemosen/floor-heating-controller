@@ -5,10 +5,12 @@ switch:
   - platform: restart
     name: "${friendly_name} restart"
     icon: "mdi:restart"
-    id: floor_heating_ctrl_reboot    
+    id: floor_heating_ctrl_reboot
+    entity_category: config
 
   - platform: template
     name: "Valve maintenance"
+    entity_category: config
     turn_on_action:
       - script.execute: valve_maintenance
        

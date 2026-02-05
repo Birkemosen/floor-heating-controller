@@ -42,6 +42,7 @@ text_sensor:
   - platform: template
     name: "${friendly_name} uptime"
     id: ${id_prefix}uptime_human
-    icon: mdi:clock-start  
+    icon: mdi:clock-start
+    entity_category: diagnostic
     # web_server:
       # sorting_group_id: sorting_group_sensors

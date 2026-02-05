@@ -11,6 +11,7 @@ button:
   - platform: template
     name: "Scan 1-Wire Bus"
     icon: mdi:magnify
+    entity_category: diagnostic
     on_press:
       - lambda: |-
           // Search for devices
@@ -44,6 +45,7 @@ text_sensor:
     name: "1-Wire Scan Result"
     id: ${id_prefix}onewire_scan_result
     icon: mdi:chip
+    entity_category: diagnostic
     web_server:
       sorting_group_id: sorting_group_debug
 
