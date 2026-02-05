@@ -32,7 +32,7 @@ substitutions:
   adc_bemf_3_pin: GPIO3
   adc_bemf_4_pin: GPIO4
   # adc_zero_calibration: "0.0"
-  onewire_pin: GPIO5
+  onewire_pin: GPIO13
 
 esp32:
   board: ${board}

@@ -125,6 +125,13 @@ wifi:
   ap:
     ssid: "UFH_Fallback"
     password: !secret fallback_password
+  
+  # WiFi optimization for hardware interference
+  power_save_mode: none          # Disable power saving for better stability
+  output_power: 17dB             # Reduce TX power (default 20dB) - try 15dB or 12dB if issues persist
+  # fast_connect: true           # Skip scanning, connect faster (requires static IP)
+  # enable_btm: false            # Disable BSS Transition Management
+  # enable_rrm: false            # Disable Radio Resource Management
 
 captive_portal:
 
