@@ -231,8 +231,11 @@ sensor:
     pin: ${adc_current_pin}
     attenuation: 12db
     update_interval: 10ms
-    accuracy_decimals: 4
-    internal: true
+    accuracy_decimals: 3
+    unit_of_measurement: "V"
+    icon: "mdi:flash"
+    web_server:
+      sorting_group_id: sorting_group_debug
     
   # Reference voltage (half of VCC, slow update)
   - platform: adc
@@ -241,8 +244,11 @@ sensor:
     pin: ${adc_ref_pin}
     attenuation: 12db
     update_interval: 1s
-    accuracy_decimals: 4
-    internal: true
+    accuracy_decimals: 3
+    unit_of_measurement: "V"
+    icon: "mdi:sine-wave"
+    web_server:
+      sorting_group_id: sorting_group_debug
 
   # Calculated current in mA (for display)
   - platform: template
