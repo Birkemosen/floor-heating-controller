@@ -62,7 +62,14 @@ light:
     pin: GPIO48
     num_leds: 1
     chipset: ws2812
-    restore_mode: ALWAYS_OFF
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - light.turn_on:
+          id: ${id_prefix}status_led
+          brightness: 30%
+          red: 0%
+          green: 100%
+          blue: 0%
 
 psram:
   mode: octal
