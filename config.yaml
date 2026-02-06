@@ -52,8 +52,14 @@ substitutions:
   valve_maintenance_interval: "7d"  # 7 days
   
   # Dallas temperature sensors (run 1-wire scan to get addresses)
-  dallasaddress_input: "0xb300000084aa6128"
-  dallasaddress_output: "0xeb0000008492ad28"
+  # Sensor 1: 0x2A00000034ED7428
+  # Sensor 2: 0x5400000036B9A528
+  # Sensor 3: 0x120000003497E728
+  # TODO: Identify which sensor is input (supply) and which is output (return)
+  #       Hold each sensor to identify by temperature change in web UI
+  dallasaddress_input: "0x2A00000034ED7428"
+  dallasaddress_output: "0x5400000036B9A528"
+  dallasaddress_extra: "0x120000003497E728"
   
   adc_zero_calibration: "-0.075"
   pump_mac_address: "AA:BB:CC:DD:EE:FF"

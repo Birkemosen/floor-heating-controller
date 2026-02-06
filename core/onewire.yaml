@@ -83,3 +83,20 @@ sensor:
     id: ${id_prefix}dallas_output_temp
     web_server:
       sorting_group_id: sorting_group_status
+
+  # ============================================
+  # Extra Temperature Sensor (for identification/testing)
+  # ============================================
+  - platform: dallas_temp
+    setup_priority: -100
+    address: ${dallasaddress_extra}
+    name: Extra temp sensor
+    unit_of_measurement: "°C"
+    icon: "mdi:thermometer"
+    device_class: "temperature"
+    state_class: "measurement"
+    accuracy_decimals: 2
+    update_interval: 60s
+    id: ${id_prefix}dallas_extra_temp
+    web_server:
+      sorting_group_id: sorting_group_status
