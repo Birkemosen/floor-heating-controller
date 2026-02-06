@@ -64,6 +64,8 @@ sensor:
     accuracy_decimals: 2
     update_interval: 60s
     id: ${id_prefix}dallas_input_temp
+    filters:
+      - offset: ${dallas_offset_input}
     web_server:
       sorting_group_id: sorting_group_status
     
@@ -81,6 +83,8 @@ sensor:
     accuracy_decimals: 2
     update_interval: 60s
     id: ${id_prefix}dallas_output_temp
+    filters:
+      - offset: ${dallas_offset_output}
     web_server:
       sorting_group_id: sorting_group_status
 
@@ -98,5 +102,7 @@ sensor:
     accuracy_decimals: 2
     update_interval: 60s
     id: ${id_prefix}dallas_extra_temp
+    filters:
+      - offset: ${dallas_offset_extra}
     web_server:
       sorting_group_id: sorting_group_status

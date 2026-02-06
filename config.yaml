@@ -60,6 +60,10 @@ substitutions:
   dallasaddress_input: "0x2A00000034ED7428"
   dallasaddress_output: "0x5400000036B9A528"
   dallasaddress_extra: "0x120000003497E728"
+  # Calibration offsets (negative = sensor reads too high)
+  dallas_offset_input: "0.0"
+  dallas_offset_output: "0.0"
+  dallas_offset_extra: "0.0"
   
   adc_zero_calibration: "-0.075"
   pump_mac_address: "AA:BB:CC:DD:EE:FF"
