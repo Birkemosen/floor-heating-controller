@@ -397,25 +397,35 @@ interval:
           float factor_high = id(${id_prefix}current_factor_high).state;
           float factor_low = id(${id_prefix}current_factor_low).state;
           float threshold_high = mean_current * factor_high;
-          float threshold_low = -mean_current * factor_low;
           float undercurrent = id(${id_prefix}undercurrent_threshold).state;
           
-          // Overcurrent detection (endstop reached)
-          // Safety limit at 250mA absolute (BEMF motors typically run 80-130mA)
-          if (filtered > threshold_high || filtered > 250.0 ||
-              raw_current > threshold_high || raw_current < threshold_low) {
-            ESP_LOGI("motor", "Endstop: current=%.1f mA (threshold=%.1f)", filtered, threshold_high);
+          // Debug: log every 50 cycles (~500ms) during motor operation
+          static int debug_cycle = 0;
+          debug_cycle++;
+          if (debug_cycle >= 50) {
+            debug_cycle = 0;
+            float adc_c = id(${id_prefix}motor_current_adc).state;
+            float adc_r = id(${id_prefix}ref_voltage_adc).state;
+            ESP_LOGI("motor", "Motor %d: ADC=%.3fV Ref=%.3fV raw=%.1fmA filtered=%.1fmA mean=%.1fmA thr=%.1fmA",
+                     motor, adc_c, adc_r, raw_current, filtered, mean_current, threshold_high);
+          }
+          
+          // Overcurrent / endstop detection
+          // Only use FILTERED current (raw is too noisy)
+          // Safety limit at 250mA absolute
+          if (filtered > threshold_high || filtered > 250.0) {
+            ESP_LOGI("motor", "Endstop: filtered=%.1f mA (threshold=%.1f)", filtered, threshold_high);
             id(motor_endstop_event) = true;
           }
           
           // Undercurrent detection (no motor connected)
-          else if (filtered < undercurrent && filtered > -undercurrent) {
+          else if (filtered < undercurrent) {
             static int undercurrent_count = 0;
             undercurrent_count++;
-            if (undercurrent_count > 50) {  // 500ms of undercurrent
-              ESP_LOGW("motor", "Undercurrent: no motor connected? (Motor %d)", motor);
+            if (undercurrent_count > 100) {  // 1000ms of undercurrent
+              ESP_LOGW("motor", "Undercurrent: filtered=%.1f mA (Motor %d) - no motor?", filtered, motor);
               undercurrent_count = 0;
-              id(motor_endstop_event) = true;  // Treat as endstop to stop motor
+              id(motor_endstop_event) = true;
             }
           }
           
@@ -437,7 +447,7 @@ button:
           id: motor_start
           motor_num: 1
           direction: 1
-      - delay: 3s
+      - delay: 10s
       - script.execute:
           id: motor_stop
           motor_num: 1
@@ -453,7 +463,7 @@ button:
           id: motor_start
           motor_num: 1
           direction: 0
-      - delay: 3s
+      - delay: 10s
       - script.execute:
           id: motor_stop
           motor_num: 1
