@@ -236,13 +236,13 @@ switch:
 # ADC Sensors for Current Sensing (VdMot-style)
 # ============================================
 sensor:
-  # Raw current ADC (fast update for endstop detection)
+  # Raw current ADC (slow update when idle, fast polled by interval when motor runs)
   - platform: adc
     name: "Motor Current ADC"
     id: ${id_prefix}motor_current_adc
     pin: ${adc_current_pin}
     attenuation: 12db
-    update_interval: 10ms
+    update_interval: 1s
     accuracy_decimals: 3
     unit_of_measurement: "V"
     icon: "mdi:flash"
@@ -355,10 +355,13 @@ interval:
             return;
           }
           
-          // Read ADC values
+          // Read ADC values (use sensor state - updated at 1s, but sufficient for filtering)
           float adc_current = id(${id_prefix}motor_current_adc).state;
           float adc_ref = id(${id_prefix}ref_voltage_adc).state;
           float gain = id(${id_prefix}current_gain).state;
+          
+          // Force ADC update when motor is running
+          id(${id_prefix}motor_current_adc).update();
           
           // Calculate current in mA (differential measurement like VdMot)
           // current = (ADC_CURRENT - ADC_REF) * GAIN
