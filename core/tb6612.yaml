@@ -181,12 +181,21 @@ switch:
     internal: true
     restore_mode: ALWAYS_OFF  # Standby LOW at boot (motors disabled)
     
-  # Direction control
+  # Direction control (AIN1/BIN1 - direct)
   - platform: gpio
-    name: "Motor Direction"
-    id: motor_dir
+    name: "Motor Direction 1"
+    id: motor_dir1
     pin:
-      number: ${tb6612_dir_pin}
+      number: ${tb6612_dir1_pin}
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+  # Direction control (AIN2/BIN2 - inverted)
+  - platform: gpio
+    name: "Motor Direction 2"
+    id: motor_dir2
+    pin:
+      number: ${tb6612_dir2_pin}
     internal: true
     restore_mode: ALWAYS_OFF
     
@@ -494,6 +503,8 @@ script:
       - switch.turn_off: motor_ena1
       - switch.turn_off: motor_ena2
       - switch.turn_off: motor_ena3
+      - switch.turn_off: motor_dir1
+      - switch.turn_off: motor_dir2
       - switch.turn_off: motor_standby
       - globals.set:
           id: motor_turning
@@ -553,12 +564,14 @@ script:
           }
       - delay: 50ms  # Wait for relay/optocoupler settling
       
-      # Set direction
+      # Set direction (dir1 and dir2 must be opposite for TB6612FNG)
       - lambda: |-
           if (id(motor_direction) == 1) {
-            id(motor_dir).turn_on();  // Open
+            id(motor_dir1).turn_on();   // AIN1/BIN1 = HIGH
+            id(motor_dir2).turn_off();  // AIN2/BIN2 = LOW  → Forward (open)
           } else {
-            id(motor_dir).turn_off(); // Close
+            id(motor_dir1).turn_off();  // AIN1/BIN1 = LOW
+            id(motor_dir2).turn_on();   // AIN2/BIN2 = HIGH → Reverse (close)
           }
       - delay: 5ms
       

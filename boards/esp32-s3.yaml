@@ -50,8 +50,9 @@ substitutions:
   # ============================================
   # Control pins
   tb6612_mux_pin: GPIO1       # Mux: HIGH=N1 (odd motors), LOW=N2 (even motors)
-  tb6612_dir_pin: GPIO6       # Direction: HIGH=open, LOW=close
-  tb6612_stby_pin: GPIO7      # Standby: LOW=active, HIGH=standby
+  tb6612_dir1_pin: GPIO6      # Direction AIN1/BIN1: HIGH=open, LOW=close
+  tb6612_dir2_pin: GPIO9      # Direction AIN2/BIN2: inverted by software (was I2C SCL)
+  tb6612_stby_pin: GPIO7      # Standby: HIGH=active, LOW=standby
   
   # Enable pins (one per motor pair)
   tb6612_ena0_pin: GPIO2      # Motors 1 & 2 (TB6612#1 PWMA)
@@ -67,16 +68,12 @@ substitutions:
   adc_ref_pin: GPIO12         # Reference voltage for current measurement
   
   # ============================================
-  # I2C Pins
+  # Spare Pins
   # ============================================
-  i2c_sda_pin: GPIO8          # I2C Data
-  i2c_scl_pin: GPIO9          # I2C Clock
-  
-  # ============================================
-  # UART Pins (UART0)
-  # ============================================
-  uart_tx_pin: GPIO43         # UART0 TX
-  uart_rx_pin: GPIO44         # UART0 RX
+  # i2c_sda_pin: GPIO8        # Free (was I2C SDA)
+  # uart_tx_pin: GPIO43       # UART0 TX (active on Super Mini)
+  # uart_rx_pin: GPIO44       # UART0 RX (active on Super Mini)
+  # GPIO9 is now used for tb6612_dir2_pin
   
   # ============================================
   # Other Pins
@@ -316,20 +313,12 @@ interval:
       - script.execute: led_update_status
 
 # ============================================
-# I2C Bus
+# I2C Bus (disabled - GPIO9 used for motor direction)
 # ============================================
-i2c:
-  sda: ${i2c_sda_pin}
-  scl: ${i2c_scl_pin}
-  scan: true
-
-# ============================================
-# UART (for external communication)
-# ============================================
-# uart:
-#   tx_pin: ${uart_tx_pin}
-#   rx_pin: ${uart_rx_pin}
-#   baud_rate: 115200
+# i2c:
+#   sda: GPIO8
+#   scl: GPIO9
+#   scan: true
 
 psram:
   mode: octal

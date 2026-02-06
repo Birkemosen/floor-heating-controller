@@ -22,10 +22,10 @@ ESPHome firmware for custom floor heating controller using ESP32-S3 Super Mini w
 | GPIO3 | Enable 1 | Motors 3 & 4 (TB6612#1 PWMB) |
 | GPIO4 | Enable 2 | Motors 5 & 6 (TB6612#2 PWMA) |
 | GPIO5 | Enable 3 | Motors 7 & 8 (TB6612#2 PWMB) |
-| GPIO6 | Direction | All motors (HIGH=open, LOW=close) |
-| GPIO7 | Standby | Driver enable (LOW=active) |
-| GPIO8 | I2C SDA | I2C Data |
-| GPIO9 | I2C SCL | I2C Clock |
+| GPIO6 | Direction 1 | AIN1/BIN1 (HIGH=open, LOW=close) |
+| GPIO7 | Standby | Driver enable (HIGH=active) |
+| GPIO8 | Free | Was I2C SDA |
+| GPIO9 | Direction 2 | AIN2/BIN2 (inverted by software) |
 | GPIO10 | Current ADC | Motor current sensing |
 | GPIO11 | Tacho | Revolution counting |
 | GPIO12 | Ref ADC | Reference voltage |
