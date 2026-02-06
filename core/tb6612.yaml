@@ -63,31 +63,40 @@ globals:
     initial_value: '0'
     
   # Mean current for endstop detection (per motor, in mA)
-  # These are learned during operation
+  # Initial value ~80mA typical for BEMF valve motors
+  # These are learned during operation and saved to flash
   - id: motor_mean_current_1
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_2
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_3
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_4
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_5
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_6
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_7
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
   - id: motor_mean_current_8
     type: float
-    initial_value: '20.0'
+    restore_value: true
+    initial_value: '80.0'
     
   # Endstop event flag
   - id: motor_endstop_event
@@ -169,9 +178,8 @@ switch:
     id: motor_standby
     pin:
       number: ${tb6612_stby_pin}
-      inverted: true  # LOW = active, so invert for logical HIGH = active
     internal: true
-    restore_mode: ALWAYS_OFF
+    restore_mode: ALWAYS_OFF  # Standby LOW at boot (motors disabled)
     
   # Direction control
   - platform: gpio
@@ -373,7 +381,7 @@ interval:
           
           // Get mean current for this motor
           int motor = id(current_motor);
-          float mean_current = 20.0;  // default
+          float mean_current = 80.0;  // default for BEMF valve motors
           switch(motor) {
             case 1: mean_current = id(motor_mean_current_1); break;
             case 2: mean_current = id(motor_mean_current_2); break;
@@ -393,8 +401,8 @@ interval:
           float undercurrent = id(${id_prefix}undercurrent_threshold).state;
           
           // Overcurrent detection (endstop reached)
-          // Safety limit at 100mA absolute
-          if (filtered > threshold_high || filtered > 100.0 ||
+          // Safety limit at 250mA absolute (BEMF motors typically run 80-130mA)
+          if (filtered > threshold_high || filtered > 250.0 ||
               raw_current > threshold_high || raw_current < threshold_low) {
             ESP_LOGI("motor", "Endstop: current=%.1f mA (threshold=%.1f)", filtered, threshold_high);
             id(motor_endstop_event) = true;
